@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // First-party API calls: cookies stay same-site and CSRF works normally.
+      // First-party API calls to Spring Boot :8001; cookies stay same-site and CSRF works normally.
       '/api': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,

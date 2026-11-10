@@ -1,0 +1,32 @@
+server:
+  port: 8001
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: never
+  tomcat:
+    max-http-form-post-size: 16MB
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/medtwin?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+  jackson:
+    default-property-inclusion: always
+    serialization:
+      write-dates-as-timestamps: false
+
+medtwin:
+  ai-service-url: http://127.0.0.1:8002
+  ai-shared-secret: ""
+  session-hours: 8
+  upload-dir: ../backend/var/documents
+  csrf-cookie: medtwin_csrf
+  session-cookie: medtwin_session
+  cors-origins: http://localhost:5173,http://127.0.0.1:5173

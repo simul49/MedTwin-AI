@@ -1,16 +1,21 @@
-# MedTwin AI — backend (Django 4.2 + DRF)
+# MedTwin AI — Python modules (AI service + ORM models)
 
-## Setup
+> The public HTTP backend is now **Spring Boot 3** (`backend-spring/`). This directory no longer
+> runs a Django HTTP server; it supplies the Python AI engine, the unmanaged Django ORM models
+> shared with the AI microservice (`backend-ai/`), and the demo seed command. See the root
+> `README.md` for the current startup commands.
+
+## Setup (AI service / demo data)
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r ../backend-ai/requirements.txt
 
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS medtwin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root medtwin < ../db/schema.sql
 
 .venv/bin/python manage.py seed_demo
-.venv/bin/python manage.py runserver 127.0.0.1:8001
+cd .. && ./scripts/start-backend.sh
 ```
 
 ## Configuration (environment variables, all optional)

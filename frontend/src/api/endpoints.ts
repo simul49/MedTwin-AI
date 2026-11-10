@@ -31,7 +31,7 @@ export const auth = {
   csrf: () => refreshCsrf(),
   login: (email: string, password: string) =>
     api.post<User>('/auth/login/', { email, password }).then(async (user) => {
-      await refreshCsrf(); // Django rotates the token on login
+      await refreshCsrf(); // the backend rotates the token on login
       return user;
     }),
   register: (payload: Record<string, unknown>) => api.post<User>('/auth/register/', payload),

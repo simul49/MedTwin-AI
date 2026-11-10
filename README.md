@@ -15,13 +15,35 @@ with a grounded, safety-aware **AI assistant** — with healthcare professionals
 | Layer | Technology |
 |---|---|
 | Frontend | Vue 3 + TypeScript + Vite + Tailwind CSS + Pinia + vue-i18n (EN / 中文) |
-| Backend | Python 3.9 + Django 4.2 + Django REST Framework |
+| Main backend | Java 21 + Spring Boot 3.3 (REST, sessions, RBAC, consent, JDBC) on `:8001` |
+| AI backend | Python 3.9 + FastAPI on `:8002` — LLM/RAG/safety/NLP **only** |
 | Database | MySQL 8.4 — database `medtwin`, user `root`, no password |
-| AI | Built-in offline engine (extractive RAG + rules). Optional LLM provider via env vars |
+| AI engine | Built-in offline engine (extractive RAG + rules). Optional LLM provider via env vars |
 
 The AI layer has **no hard dependency on an external model provider**. The app is fully functional
 out of the box; when you share an API key later, set two environment variables and the same
 endpoints start using it (see [Enabling an LLM provider](#enabling-an-llm-provider)).
+
+### Why a hybrid backend
+
+Spring Boot is the only public backend. It owns `/api/v1/*`, session cookies, CSRF, role checks,
+consent scoping, audit logging and every SQL read/write. The Python service is an internal
+microservice bound to `127.0.0.1:8002`; Spring proxies only the AI-owned routes to it and passes
+the authenticated user in `X-Medtwin-*` headers:
+
+```
+Vue SPA  ──►  Spring Boot :8001  ──►  MySQL
+                    │
+                    └── /ai/chat, /ai/history, /ai/conversations, /recommendations,
+                        /safety/evaluate, /content-analysis, /internal/extract
+                            ──►  Python FastAPI :8002  ──►  MySQL  + optional LLM provider
+```
+
+The Python service reuses the existing `apps/ai`, `apps/core` and model modules from `backend/`
+as a plain Django ORM — there is **no Django HTTP server** in the running stack. Document text
+extraction (PDF text layer and candidate fields) is also Python-owned NLP; Spring writes the file
+and stores the relational rows. `MEDTWIN_AI_SHARED_SECRET` can be set on both processes to
+authenticate the internal hop.
 
 ---
 
@@ -32,17 +54,29 @@ endpoints start using it (see [Enabling an LLM provider](#enabling-an-llm-provid
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS medtwin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root medtwin < db/schema.sql
 
-# 2. Backend
+# 2. Python environment (AI service + demo seeder)
 cd backend
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r ../backend-ai/requirements.txt
 .venv/bin/python manage.py seed_demo          # synthetic demo data
-.venv/bin/python manage.py runserver 127.0.0.1:8001
+cd ..
 
-# 3. Frontend (new terminal)
+# 3. Both backend processes (Java 21 + Gradle required)
+chmod +x scripts/start-backend.sh
+./scripts/start-backend.sh
+#   Spring Boot :8001/api/v1   ·   Python AI :8002
+
+# 4. Frontend (new terminal)
 cd frontend
 npm install
 npm run dev                                   # http://localhost:5173
+```
+
+To run the two services separately:
+
+```bash
+backend/.venv/bin/python -m uvicorn app:app --app-dir backend-ai --host 127.0.0.1 --port 8002
+cd backend-spring && JAVA_HOME=/opt/homebrew/opt/openjdk@21 gradle bootRun
 ```
 
 Open **http://localhost:5173** and sign in with a demo account (password `MedTwin@2026` for all):
@@ -64,31 +98,31 @@ All seeded data is **synthetic**. There is no real patient information anywhere 
 ```
 .
 ├── db/
-│   └── schema.sql                # Source of truth for the schema (27 tables)
-├── backend/                      # Django + DRF
-│   ├── config/                   # settings, urls, wsgi/asgi
-│   ├── apps/
-│   │   ├── accounts/             # users, roles, profiles, session auth
-│   │   ├── twin/                 # records, observations, allergies, meds, documents, timeline
-│   │   ├── consent/              # consent grants and the access workflow
-│   │   ├── ai/                   # assistant, RAG, safety engine, recommendations
-│   │   ├── connect/              # messages, appointments, notifications
-│   │   └── ops/                  # audit logs, model governance, admin, feature flags
-│   └── templates/setup.html      # guided setup page when MySQL is unreachable
-└── frontend/                     # Vue 3 SPA
-    └── src/
-        ├── api/                  # typed client + endpoint modules
-        ├── components/           # layout + UI kit
-        ├── i18n/                 # en / zh message catalogues
-        ├── stores/               # auth + ui (Pinia)
-        └── views/                # public, patient, doctor, admin, errors
+│   └── schema.sql                # Source of truth for the schema (29 tables)
+├── backend-spring/               # Spring Boot 3 — public API, auth, RBAC, consent, JDBC
+│   └── src/main/java/com/medtwin/
+│       ├── api/                  # controllers: auth, patient, doctor, consent, connect, ops, AI proxy
+│       ├── core/                 # sessions, PBKDF2, CSRF, access control, serializers, AI client
+│       └── config/               # properties, interceptors/CORS, error handling
+├── backend-ai/                   # FastAPI — LLM, RAG, safety, recommendations, document NLP
+│   ├── app.py
+│   └── requirements.txt
+├── backend/                      # Python modules + Django ORM models (no HTTP server)
+│   ├── apps/ai/                  # intent, retrieval, composer, providers, safety, content
+│   ├── apps/core/                # audit + shared helpers
+│   ├── apps/*/models.py          # unmanaged models shared by the AI service
+│   └── manage.py seed_demo       # synthetic demo data
+├── scripts/start-backend.sh      # starts both backend processes
+└── frontend/                     # Vue 3 SPA (unchanged)
+    └── src/api/                  # typed client + endpoint modules
 ```
 
 ### Why `managed = False`
 
 Every Django model mirrors `db/schema.sql` exactly and is declared `managed = False`, so the SQL file
-— not Django migrations — is the schema's source of truth. This keeps MySQL-specific definitions
-(`ENUM`, `JSON`, `FULLTEXT`, precise indexes) authoritative and readable in one place.
+— not migrations — is the schema's source of truth. Spring issues explicit SQL over the same tables
+and the Python AI service reuses the model definitions for its ORM queries. This keeps
+MySQL-specific definitions (`ENUM`, `JSON`, `FULLTEXT`, precise indexes) authoritative in one place.
 
 ---
 
@@ -165,9 +199,12 @@ rather than showing an error, and the limitation is recorded in the response.
 
 * Backend-enforced authorisation: a doctor only reaches a patient while an effective, in-scope,
   un-expired grant exists. Missing grants return **404**, so endpoints cannot probe for patient IDs.
-* Session cookie (`httpOnly`, SameSite=Lax) + CSRF token; the SPA echoes `X-CSRFToken` on unsafe
-  methods and refreshes it after login (Django rotates it).
-* Passwords hashed with PBKDF2-SHA256; sign-in is rate-limited (8 attempts / 15 min per email+IP).
+* Spring-issued session cookie (`httpOnly`, SameSite=Lax, 8 h) + `medtwin_csrf` token; the SPA
+  echoes `X-CSRFToken` on unsafe methods and refreshes it after login. Sessions live in the
+  existing `django_session` table with a plain JSON payload.
+* Passwords hashed with PBKDF2-SHA256; Spring verifies and writes the same Django hash format, so
+  existing seeded accounts keep working. Sign-in is rate-limited (8 attempts / 15 min per email+IP).
+* The Python AI service binds to `127.0.0.1` only and never accepts browser traffic directly.
 * Uploaded files are validated by extension, MIME type and size, stored outside the public tree, and
   served only through an authorised view.
 * Sensitive access, consent changes and privileged actions are written to `audit_logs` with actor,

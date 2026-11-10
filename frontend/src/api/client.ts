@@ -1,7 +1,7 @@
 /**
  * Thin fetch wrapper for the MedTwin AI API.
  *
- * Requests go to the same origin (the Vite dev server proxies /api to Django),
+ * Requests go to the same origin (the Vite dev server proxies /api to Spring Boot),
  * so the session cookie is first-party and CSRF works normally.
  */
 
@@ -25,7 +25,7 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/** Fetch and cache the CSRF token. Called again after login (Django rotates it). */
+/** Fetch and cache the CSRF token. Called again after login (the backend rotates it). */
 export async function refreshCsrf(): Promise<string | null> {
   await fetch('/api/v1/auth/csrf/', { credentials: 'same-origin' });
   csrfToken = readCookie(CSRF_COOKIE);
@@ -70,7 +70,7 @@ async function request<T>(path: string, options: Options = {}, retried = false):
   });
 
   if (response.status === 403 && !retried) {
-    // Django rotates the CSRF token on login — refresh once and retry.
+    // The backend rotates the CSRF token on login — refresh once and retry.
     await refreshCsrf();
     return request<T>(path, options, true);
   }

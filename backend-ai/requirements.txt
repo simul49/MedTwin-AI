@@ -1,0 +1,11 @@
+# MedTwin AI microservice (Python 3.9+)
+# Reuses the existing Django model definitions as a plain ORM.
+Django==4.2.11
+djangorestframework==3.15.2
+PyMySQL==1.1.1
+cryptography==42.0.5
+pypdf==4.2.0
+Pillow==10.3.0
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
