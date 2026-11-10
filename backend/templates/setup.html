@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Database setup — MedTwin AI</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           background:#f6f8fb; color:#0f172a; }
+    .wrap { max-width: 720px; margin: 8vh auto; padding: 32px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:32px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.06); }
+    h1 { margin:0 0 4px; font-size:24px; }
+    .sub { color:#64748b; margin:0 0 24px; font-size:15px; }
+    .badge { display:inline-block; background:#fef3c7; color:#92400e; border-radius:999px;
+             padding:4px 12px; font-size:12px; font-weight:600; margin-bottom:16px; }
+    pre { background:#0f172a; color:#e2e8f0; padding:16px; border-radius:12px; overflow:auto;
+          font-size:13px; line-height:1.6; }
+    ol { padding-left: 20px; } li { margin: 8px 0; }
+    code { background:#f1f5f9; padding:2px 6px; border-radius:6px; font-size:13px; }
+    .detail { color:#64748b; font-size:13px; margin-top:24px; word-break:break-word; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <span class="badge">Database not reachable</span>
+      <h1>Connect MySQL to continue</h1>
+      <p class="sub">MedTwin AI is running, but it cannot reach the <code>{{ database }}</code> database.</p>
+
+      <ol>
+        <li>Open <strong>Navicat</strong> and start your MySQL connection.</li>
+        <li>Create the database if it does not exist yet:
+          <pre>CREATE DATABASE IF NOT EXISTS {{ database }}
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;</pre>
+        </li>
+        <li>Load the schema and demo data:
+          <pre>mysql -u root {{ database }} &lt; db/schema.sql
+.venv/bin/python manage.py seed_demo</pre>
+        </li>
+        <li>Reload this page.</li>
+      </ol>
+
+      <p class="detail">Driver detail: {{ detail }}</p>
+    </div>
+  </div>
+</body>
+</html>
