@@ -9,6 +9,26 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _load_dotenv(path: Path) -> None:
+    """Load ``KEY=VALUE`` lines into the environment (existing values win).
+
+    Keeps secrets such as ``MEDTWIN_LLM_API_KEY`` out of the repository — the
+    ``backend/.env`` file is git-ignored.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        os.environ.setdefault(key, value)
+
+
+_load_dotenv(BASE_DIR / ".env")
+
+
 def env(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 

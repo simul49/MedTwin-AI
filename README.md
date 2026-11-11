@@ -183,15 +183,20 @@ bypasses safety rules. Emergency language short-circuits generation and returns 
 
 ### Enabling an LLM provider
 
+Either export the variables in your shell, or put them in `backend/.env` (git-ignored, loaded
+automatically by `config/settings.py`):
+
 ```bash
-export MEDTWIN_LLM_PROVIDER=openai_compatible   # or "anthropic"
-export MEDTWIN_LLM_API_KEY=sk-...               # your key
-export MEDTWIN_LLM_MODEL=gpt-4o-mini
+MEDTWIN_LLM_PROVIDER=openai_compatible          # or "anthropic"
+MEDTWIN_LLM_API_KEY=sk-...                      # your key
+MEDTWIN_LLM_MODEL=deepseek-v4-flash-202605      # provider's model id
+MEDTWIN_LLM_BASE_URL=https://tokenhub.tencentcloudmaas.com/v1   # OpenAI-compatible base URL
 ```
 
 The provider is called with a system prompt that forbids diagnosis, prescribing and dose changes and
 requires inline citations. If the call fails, the request **falls back to the offline composer**
-rather than showing an error, and the limitation is recorded in the response.
+rather than showing an error, and the limitation is recorded in the response. `GET /api/v1/health/`
+reports which model and mode are active.
 
 ---
 
