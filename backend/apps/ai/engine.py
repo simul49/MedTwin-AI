@@ -46,6 +46,14 @@ def answer_question(*, user, message: str, conversation=None, language: str = "e
         twin_context = retrieval.build_twin_context(user, _context_categories(intent_result.intent))
 
     passage_dicts = [p.as_citation(i) for i, p in enumerate(passages, start=1)]
+    # Prompt passages carry the chunk text; citations exposed to the UI do not.
+    prompt_passages = [
+        {
+            "sourceTitle": getattr(p, "title", "") or getattr(p, "source_title", ""),
+            "text": p.text,
+        }
+        for p in passages
+    ]
 
     composed = composer.compose(
         message=message,
@@ -65,7 +73,7 @@ def answer_question(*, user, message: str, conversation=None, language: str = "e
             generated = providers.generate(
                 system=providers.SYSTEM_PROMPT,
                 user=providers.build_user_prompt(
-                    message=message, passages=passage_dicts, twin_context=twin_context
+                    message=message, passages=prompt_passages, twin_context=twin_context
                 ),
                 passages=passage_dicts,
             )

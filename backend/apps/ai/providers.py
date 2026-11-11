@@ -118,7 +118,8 @@ def build_user_prompt(*, message: str, passages: List[Dict[str, Any]], twin_cont
     if passages:
         parts.append("Approved passages:")
         for index, passage in enumerate(passages, start=1):
-            parts.append(f"[{index}] {passage['sourceTitle']}: {passage['text'][:1200]}")
+            title = passage.get("sourceTitle") or passage.get("title") or "Reference"
+            parts.append(f"[{index}] {title}: {(passage.get('text') or '')[:1200]}")
         parts.append("")
     if twin_context:
         parts.append("Authorised patient context (JSON):")
