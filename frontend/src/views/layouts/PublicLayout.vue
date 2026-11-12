@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PublicNav from '@/components/layout/PublicNav.vue';
 import PublicFooter from '@/components/layout/PublicFooter.vue';
+import SiteChatbot from '@/components/chat/SiteChatbot.vue';
 </script>
 
 <template>
@@ -14,5 +15,6 @@ import PublicFooter from '@/components/layout/PublicFooter.vue';
       </RouterView>
     </main>
     <PublicFooter />
+    <SiteChatbot />
   </div>
 </template>

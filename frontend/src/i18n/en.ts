@@ -22,6 +22,17 @@ export default {
     menu: 'Menu',
     close: 'Close',
   },
+  chatbot: {
+    title: 'MedTwin Assistant',
+    subtitle: 'General health info · not medical advice',
+    welcome:
+      'Hi! I can answer general health questions using our reviewed medical library. For anything personal, sign in to the patient portal so I can use your Digital Twin.',
+    placeholder: 'Ask a health question…',
+    thinking: 'Checking sources…',
+    disclaimer:
+      'The assistant never diagnoses or prescribes. In an emergency, contact your local emergency services.',
+    error: 'Sorry — something went wrong. Please try again.',
+  },
   footer: {
     description:
       'A structured Digital Twin of authorised health information, explained through grounded, safety-aware AI — with healthcare professionals kept in the loop.',

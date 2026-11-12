@@ -27,6 +27,12 @@ public class AiController {
         return ai.post("/ai/chat/", body);
     }
 
+    /** Anonymous website chatbot — general health Q&A with the same safety pipeline. */
+    @PostMapping("/ai/public-chat/")
+    public Object publicChat(@RequestBody(required = false) java.util.Map<String, Object> body) {
+        return ai.post("/public-chat/", body);
+    }
+
     @GetMapping("/ai/conversations/")
     public Object conversations(HttpServletRequest request) {
         access.require("PATIENT");

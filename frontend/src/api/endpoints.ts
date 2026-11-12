@@ -106,6 +106,16 @@ export const consent = {
 export const ai = {
   chat: (message: string, conversationId?: string) =>
     api.post<ChatResponse>('/ai/chat/', { message, conversationId }),
+  publicChat: (message: string, language?: string) =>
+    api.post<{
+      answer: string;
+      intent: string;
+      sources: { ref: number; title: string; sourceTitle: string; url: string }[];
+      limitations: string[];
+      nextStep: string;
+      safety: Safety;
+      model: { name: string; version: string; mode: string; generationMode: string; latencyMs: number };
+    }>('/ai/public-chat/', { message, language }),
   conversations: () =>
     api.get<{ results: { id: string; title: string; updatedAt: string | null; messageCount: number }[] }>(
       '/ai/conversations/',

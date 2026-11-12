@@ -14,6 +14,7 @@ import logging
 import os
 import secrets
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -143,6 +144,59 @@ def chat(request: Request, payload: Dict[str, Any] = Body(default={})):
     if conversation is not None:
         Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
     return result
+
+
+# ---------------------------------------------------------------------------
+# Public website chatbot (anonymous, rate-limited, same safety pipeline)
+# ---------------------------------------------------------------------------
+_PUBLIC_HITS: Dict[str, List[float]] = {}
+_PUBLIC_RATE_LIMIT = 20
+_PUBLIC_RATE_WINDOW = 300.0
+
+
+def _public_rate_limit(request: Request) -> None:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    key = forwarded.split(",")[0].strip() if forwarded else (
+        request.client.host if request.client else "unknown"
+    )
+    now = time.time()
+    hits = [t for t in _PUBLIC_HITS.get(key, []) if now - t < _PUBLIC_RATE_WINDOW]
+    if len(hits) >= _PUBLIC_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many requests — please try again shortly.")
+    hits.append(now)
+    _PUBLIC_HITS[key] = hits
+
+
+@app.post("/public-chat/")
+def public_chat(request: Request, payload: Dict[str, Any] = Body(default={})):
+    """Anonymous general-health Q&A for the public website.
+
+    Runs the same intent → retrieval → generation → safety pipeline as the
+    patient assistant, but with no patient context and no conversation history.
+    """
+    _verify_secret(request)
+    _public_rate_limit(request)
+    message = (payload.get("message") or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Type a question to continue.")
+    if len(message) > 1000:
+        raise HTTPException(status_code=400, detail="Please keep questions under 1000 characters.")
+    language = payload.get("language")
+    result = answer_question(
+        user=None,
+        message=message,
+        conversation=None,
+        language=language if language in {"en", "zh"} else "en",
+    )
+    return {
+        "answer": result["answer"],
+        "intent": result["intent"],
+        "sources": result["sources"],
+        "limitations": result["limitations"],
+        "nextStep": result["nextStep"],
+        "safety": result["safety"],
+        "model": result["model"],
+    }
 
 
 @app.get("/ai/conversations/")
