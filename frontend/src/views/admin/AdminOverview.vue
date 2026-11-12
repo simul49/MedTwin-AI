@@ -94,7 +94,7 @@ function approved(status: string) {
     </div>
 
     <p v-if="error" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ error }}</p>
-    <div v-if="loading" class="h-64 animate-pulse rounded-2xl bg-ink-100" />
+    <div v-if="loading" class="shimmer h-64 animate-pulse rounded-2xl bg-ink-100" />
 
     <template v-else>
       <!-- KPI row -->

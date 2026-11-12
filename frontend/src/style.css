@@ -13,16 +13,23 @@
 
   body {
     @apply text-ink-900 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
     background-color: #f5f8fa;
     background-image:
-      radial-gradient(900px 520px at 10% -10%, rgba(14, 145, 128, 0.09), transparent 65%),
-      radial-gradient(820px 460px at 92% 2%, rgba(50, 119, 232, 0.07), transparent 62%),
+      radial-gradient(900px 520px at 10% -10%, rgba(14, 145, 128, 0.1), transparent 65%),
+      radial-gradient(820px 460px at 92% 2%, rgba(50, 119, 232, 0.08), transparent 62%),
+      radial-gradient(700px 500px at 55% 108%, rgba(56, 199, 176, 0.07), transparent 60%),
       linear-gradient(180deg, #fafcfd 0%, #f4f8fa 52%, #eef4f7 100%);
     background-attachment: fixed;
   }
 
+  ::selection {
+    background: rgba(14, 145, 128, 0.18);
+    color: #0c4c47;
+  }
+
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-white;
   }
 
   h1,
@@ -48,15 +55,15 @@
 
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-      transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+      transition-all duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
   }
 
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn relative overflow-hidden bg-brand-600 text-white hover:bg-brand-700;
   }
 
   .btn-secondary {
-    @apply btn border border-ink-200 bg-white text-ink-700 hover:bg-ink-100;
+    @apply btn border border-ink-200 bg-white text-ink-700 shadow-sm hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-800;
   }
 
   .btn-ghost {
@@ -68,8 +75,20 @@
   }
 
   .input {
-    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900
-      placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm
+      transition-all duration-200 placeholder:text-ink-400/90 hover:border-ink-300
+      focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100/70;
+  }
+
+  .input:focus {
+    box-shadow: 0 0 0 1px rgba(14, 145, 128, 0.18), 0 12px 40px -14px rgba(14, 145, 128, 0.45);
+  }
+
+  input:-webkit-autofill,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset;
+    transition: background-color 9999s ease-in-out 0s;
   }
 
   .label {
@@ -101,6 +120,15 @@
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 12px 32px -20px rgba(15, 23, 42, 0.28);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-card:hover {
+  border-color: #d9e7ea;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 20px 44px -22px rgba(15, 23, 42, 0.32);
 }
 
 .dash-card-pad {
@@ -144,30 +172,63 @@
   align-items: center;
   justify-content: center;
   border-radius: 0.8rem;
-  background: #eafaf7;
+  background: linear-gradient(135deg, #eafaf7, #dcf5ef);
   color: #0e9180;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.dash-card:hover .dash-icon-tile {
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px -8px rgba(14, 145, 128, 0.45);
 }
 
 .dash-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  overflow: hidden;
   border-radius: 0.75rem;
-  background: #0e9180;
+  background-image: linear-gradient(110deg, #0e9180 20%, #14a992 48%, #0e9180 76%);
+  background-size: 220% 100%;
   padding: 0.7rem 1.25rem;
   font-size: 0.8125rem;
   font-weight: 650;
   letter-spacing: 0.005em;
   color: #fff;
   box-shadow: 0 6px 16px -12px rgba(14, 145, 128, 0.9);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.dash-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: none;
 }
 
 .dash-btn:hover {
-  background: #0d7469;
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -10px rgba(14, 145, 128, 0.6);
+  box-shadow: 0 10px 24px -10px rgba(14, 145, 128, 0.65);
+}
+
+.dash-btn:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.7s ease;
 }
 
 .dash-btn:disabled {
@@ -175,6 +236,11 @@
   transform: none;
   box-shadow: none;
   cursor: not-allowed;
+  animation: none;
+}
+
+.dash-btn:disabled::after {
+  display: none;
 }
 
 .dash-btn-soft {
@@ -203,9 +269,11 @@
 }
 
 .dash-tab-active {
-  background: #0e9180;
+  background-image: linear-gradient(110deg, #0d7469, #14a992, #0d7469);
+  background-size: 220% 100%;
   color: #fff;
   box-shadow: 0 6px 16px -8px rgba(14, 145, 128, 0.8);
+  animation: gradient-shift 8s ease infinite;
 }
 
 .dash-tab-active:hover {
@@ -293,10 +361,12 @@
 }
 
 .gradient-text {
-  background-image: linear-gradient(95deg, #0d7469 0%, #0e9180 48%, #35bda7 100%);
+  background-image: linear-gradient(95deg, #0d7469 0%, #14a992 38%, #38c7b0 55%, #0e9180 100%);
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: gradient-shift 8s ease infinite;
 }
 
 .section-eyebrow {
@@ -363,6 +433,30 @@
   }
   50% {
     transform: translate(18px, -24px) scale(1.06);
+  }
+}
+
+/* Shimmer skeleton placeholder — wrap a rounded element and let .shimmer shine over it */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
   }
 }
 

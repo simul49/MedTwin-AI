@@ -158,7 +158,7 @@ onMounted(load);
           <p class="mt-2 text-[11px] text-ink-400">Only patients with active consent are shown.</p>
         </div>
 
-        <div v-if="loading" class="h-64 animate-pulse bg-ink-100" />
+        <div v-if="loading" class="shimmer h-64 animate-pulse rounded-b-[18px] bg-ink-100" />
         <div v-else class="overflow-x-auto">
           <table class="dash-table-compact w-full min-w-[340px] border-collapse">
             <thead class="bg-surface-50">
