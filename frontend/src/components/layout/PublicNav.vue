@@ -128,6 +128,9 @@ function pickLocale(code: LocaleCode) {
               <RouterLink to="/login?portal=doctor" class="block px-3 py-2 text-sm text-ink-700 transition-colors hover:bg-ink-100">
                 {{ t('nav.doctorPortal') }}
               </RouterLink>
+              <RouterLink to="/login?portal=admin" class="block px-3 py-2 text-sm text-ink-700 transition-colors hover:bg-ink-100">
+                {{ t('nav.adminPortal') }}
+              </RouterLink>
             </div>
           </Transition>
         </div>
@@ -171,6 +174,7 @@ function pickLocale(code: LocaleCode) {
           <div class="mt-2 flex gap-2">
             <RouterLink to="/login?portal=patient" class="btn-secondary flex-1 text-xs">{{ t('nav.patientPortal') }}</RouterLink>
             <RouterLink to="/login?portal=doctor" class="btn-secondary flex-1 text-xs">{{ t('nav.doctorPortal') }}</RouterLink>
+            <RouterLink to="/login?portal=admin" class="btn-secondary flex-1 text-xs">{{ t('nav.adminPortal') }}</RouterLink>
           </div>
         </div>
       </nav>
