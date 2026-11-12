@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { ai } from '@/api/endpoints';
 import type { ChatResponse } from '@/api/types';
 
@@ -12,20 +12,12 @@ interface Turn {
   showSources?: boolean;
 }
 
-interface ConversationItem {
-  id: string;
-  title: string;
-  updatedAt: string | null;
-  messageCount: number;
-}
-
 const turns = ref<Turn[]>([]);
 const draft = ref('');
 const sending = ref(false);
 const error = ref<string | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 const textareaEl = ref<HTMLTextAreaElement | null>(null);
-const conversations = ref<ConversationItem[]>([]);
 const activeConversation = ref<string | null>(null);
 let typewriter: ReturnType<typeof setInterval> | null = null;
 
@@ -112,31 +104,6 @@ function reveal(full: string, turn: Turn, done: () => void) {
   }, 16);
 }
 
-async function loadConversations() {
-  try {
-    conversations.value = (await ai.conversations()).results;
-  } catch {
-    conversations.value = [];
-  }
-}
-
-async function openConversation(id: string) {
-  try {
-    const detail = await ai.conversation(id);
-    activeConversation.value = id;
-    suggestions.value = [];
-    turns.value = detail.messages.map((m) => ({
-      id: m.id,
-      role: m.role === 'USER' ? 'user' : 'ai',
-      body: m.body,
-      full: m.body,
-    }));
-    await scroll();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-  }
-}
-
 function newConversation() {
   turns.value = [];
   activeConversation.value = null;
@@ -162,7 +129,6 @@ async function send(message?: string) {
     // Keep the reactive proxy so typewriter mutations trigger re-renders.
     const reactiveTurn = turns.value[turns.value.push(turn) - 1];
     activeConversation.value = null;
-    await loadConversations();
     reveal(result.answer, reactiveTurn, () => scroll());
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -179,7 +145,6 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(loadConversations);
 onBeforeUnmount(() => {
   if (typewriter) clearInterval(typewriter);
 });
@@ -202,51 +167,13 @@ onBeforeUnmount(() => {
           </p>
         </div>
       </div>
-      <span v-if="providerLabel" class="chip border border-brand-200 bg-brand-50 px-3 py-1.5 text-brand-700">{{ providerLabel }}</span>
+      <div class="flex items-center gap-2">
+        <span v-if="providerLabel" class="chip border border-brand-200 bg-brand-50 px-3 py-1.5 text-brand-700">{{ providerLabel }}</span>
+        <button class="btn-secondary text-xs" @click="newConversation">＋ New conversation</button>
+      </div>
     </div>
 
-    <div class="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-      <!-- Conversation rail -->
-      <aside class="dash-card hidden max-h-[560px] flex-col self-start xl:flex">
-        <div class="flex items-center justify-between border-b border-ink-100 px-4 py-3.5">
-          <div class="flex items-start gap-3">
-            <span class="dash-icon-tile">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M4 5h16v11H9l-5 4z" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="dash-section-title">Conversations</p>
-              <p class="dash-section-sub mt-0.5">Recent health questions</p>
-            </div>
-          </div>
-          <button class="text-[11px] font-semibold text-brand-700 hover:underline" @click="newConversation">＋ New</button>
-        </div>
-        <div class="dash-scroll flex-1 space-y-1 overflow-y-auto p-2">
-          <button
-            v-for="(item, index) in conversations"
-            :key="item.id"
-            class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-brand-50"
-            :class="activeConversation === item.id ? 'bg-brand-50' : ''"
-            @click="openConversation(item.id)"
-          >
-            <span
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              :class="index % 3 === 0 ? 'bg-brand-500' : index % 3 === 1 ? 'bg-amber-500' : 'bg-sky-500'"
-            >
-              {{ index + 1 }}
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-[12px] font-medium text-ink-700">{{ item.title || 'Health question' }}</span>
-              <span class="block text-[10px] text-ink-400">{{ item.messageCount }} messages</span>
-            </span>
-          </button>
-          <p v-if="!conversations.length" class="px-3 py-4 text-[12px] text-ink-400">No saved conversations yet.</p>
-        </div>
-      </aside>
-
-      <!-- Chat column -->
-      <div class="min-w-0 space-y-4">
+    <div class="space-y-4">
         <div class="dash-card flex h-[min(640px,calc(100vh-260px))] flex-col overflow-hidden">
           <!-- Chat body -->
           <div ref="scroller" class="dash-scroll flex-1 space-y-4 overflow-y-auto bg-surface-50/60 px-5 py-5">
@@ -439,7 +366,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
