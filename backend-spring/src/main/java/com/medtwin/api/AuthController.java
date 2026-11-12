@@ -32,6 +32,11 @@ public class AuthController {
     private final Access access;
     private final AppProps props;
 
+    /** Guards self-service administrator sign-up (override with MEDTWIN_ADMIN_SETUP_CODE). */
+    @org.springframework.beans.factory.annotation.Value(
+            "${medtwin.admin-setup-code:medtwin-admin-2026}")
+    private String adminSetupCode;
+
     public AuthController(Db db, Sessions sessions, AuthInterceptor auth, Audit audit,
                           Access access, AppProps props) {
         this.db = db;
@@ -63,11 +68,14 @@ public class AuthController {
         if (!PASSWORD.matcher(password).matches()) {
             errors.put("password", "Use at least 8 characters, including a letter and a number.");
         }
-        if (!role.equals("PATIENT") && !role.equals("DOCTOR")) {
-            errors.put("role", "Choose Patient or Doctor.");
+        if (!role.equals("PATIENT") && !role.equals("DOCTOR") && !role.equals("ADMIN")) {
+            errors.put("role", "Choose Patient, Doctor or Administrator.");
         }
         if (role.equals("DOCTOR") && J.gs(body, "specialization").trim().isEmpty()) {
             errors.put("specialization", "Add your specialization so patients can identify you.");
+        }
+        if (role.equals("ADMIN") && !adminSetupCode.equals(J.gs(body, "setupCode").trim())) {
+            errors.put("setupCode", "Invalid administrator setup code.");
         }
         if (!J.bool(J.g(body, "acknowledge"))) {
             errors.put("acknowledge", "Please confirm the medical disclaimer to continue.");
@@ -95,7 +103,7 @@ public class AuthController {
                     enumOr(first(body, "gender", "gender"), "UNDISCLOSED",
                             Set.of("FEMALE", "MALE", "NON_BINARY", "UNDISCLOSED")),
                     J.ts(), J.ts());
-        } else {
+        } else if (role.equals("DOCTOR")) {
             db.exec("INSERT INTO doctor_profiles (id, user_id, specialization, license_number, "
                             + "hospital, department, verification_status, created_at, updated_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)",

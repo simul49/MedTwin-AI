@@ -11,7 +11,18 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 
-const portal = computed(() => (route.query.portal === 'doctor' ? 'doctor' : 'patient'));
+const portal = computed(() => {
+  if (route.query.portal === 'doctor') return 'doctor';
+  if (route.query.portal === 'admin') return 'admin';
+  return 'patient';
+});
+const portalLabel = computed(() =>
+  portal.value === 'doctor'
+    ? t('nav.doctorPortal')
+    : portal.value === 'admin'
+      ? t('nav.adminPortal')
+      : t('nav.patientPortal'),
+);
 const email = ref('');
 const password = ref('');
 const error = ref<string | null>(null);
@@ -65,9 +76,7 @@ function useDemo(demoEmail: string) {
 
     <div class="card card-pad">
       <h2 class="text-2xl font-bold">{{ t('auth.signInTitle') }}</h2>
-      <p class="muted mt-1">
-        {{ portal === 'doctor' ? t('nav.doctorPortal') : t('nav.patientPortal') }} · {{ t('nav.portal') }}
-      </p>
+      <p class="muted mt-1">{{ portalLabel }} · {{ t('nav.portal') }}</p>
 
       <form class="mt-6 space-y-4" @submit.prevent="submit">
         <div>

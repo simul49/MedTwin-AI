@@ -36,6 +36,12 @@ const audience = [
     to: '/login?portal=doctor',
     cta: 'Clinician portal',
   },
+  {
+    title: 'For platform teams',
+    body: 'Governance in one view: users, consent grants, audit trails, model versions and safety events.',
+    to: '/login?portal=admin',
+    cta: 'Admin portal',
+  },
 ];
 
 const capabilities = [

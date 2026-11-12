@@ -10,9 +10,11 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 
-const role = ref<'PATIENT' | 'DOCTOR'>(
-  route.query.portal === 'doctor' || route.query.role === 'DOCTOR' ? 'DOCTOR' : 'PATIENT',
-);
+const initialRole = (): 'PATIENT' | 'DOCTOR' | 'ADMIN' => {
+  if (route.query.portal === 'admin' || route.query.role === 'ADMIN') return 'ADMIN';
+  return route.query.portal === 'doctor' || route.query.role === 'DOCTOR' ? 'DOCTOR' : 'PATIENT';
+};
+const role = ref<'PATIENT' | 'DOCTOR' | 'ADMIN'>(initialRole());
 const form = ref({
   name: '',
   email: '',
@@ -24,6 +26,7 @@ const form = ref({
   department: '',
   dateOfBirth: '',
   gender: 'UNDISCLOSED',
+  setupCode: '',
 });
 const acknowledge = ref(false);
 const error = ref<string | null>(null);
@@ -47,6 +50,7 @@ async function submit() {
       department: form.value.department,
       dateOfBirth: form.value.dateOfBirth || undefined,
       gender: form.value.gender,
+      setupCode: form.value.setupCode,
       acknowledge: acknowledge.value,
     });
     router.push(auth.homePath);
@@ -70,7 +74,7 @@ async function submit() {
       <form class="card card-pad mt-6 space-y-5" @submit.prevent="submit">
         <div>
           <span class="label">{{ t('auth.role') }}</span>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-3 gap-3">
             <button
               type="button"
               class="rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
@@ -86,6 +90,14 @@ async function submit() {
               @click="role = 'DOCTOR'"
             >
               {{ t('auth.roleDoctor') }}
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
+              :class="role === 'ADMIN' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-600 hover:bg-ink-50'"
+              @click="role = 'ADMIN'"
+            >
+              {{ t('auth.roleAdmin') }}
             </button>
           </div>
         </div>
@@ -127,7 +139,7 @@ async function submit() {
             </div>
           </template>
 
-          <template v-else>
+          <template v-else-if="role === 'DOCTOR'">
             <div>
               <label class="label" for="spec">{{ t('auth.specialization') }}</label>
               <input id="spec" v-model="form.specialization" class="input" required />
@@ -144,6 +156,15 @@ async function submit() {
             <div>
               <label class="label" for="dept">{{ t('auth.department') }} · {{ t('common.optional') }}</label>
               <input id="dept" v-model="form.department" class="input" />
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="sm:col-span-2">
+              <label class="label" for="setupCode">{{ t('auth.adminSetupCode') }}</label>
+              <input id="setupCode" v-model="form.setupCode" class="input" required />
+              <p class="mt-1 text-xs text-ink-500">{{ t('auth.adminSetupHint') }}</p>
+              <p v-if="fieldErrors.setupCode" class="mt-1 text-xs text-rose-600">{{ fieldErrors.setupCode }}</p>
             </div>
           </template>
         </div>
