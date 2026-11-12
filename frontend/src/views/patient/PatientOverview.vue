@@ -3,9 +3,8 @@ import { computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { patient, connect } from '@/api/endpoints';
 import { useAsync, formatDateTime } from '@/composables/useAsync';
-import RingGauge from '@/components/ui/RingGauge.vue';
 import TrendChart from '@/components/ui/TrendChart.vue';
-import clinicianPhoto from '@/assets/clinician-photo.png';
+import bodyMap from '@/assets/body-map.png';
 import type { Observation } from '@/api/types';
 
 const auth = useAuthStore();
@@ -24,9 +23,6 @@ const completeness = computed(() => {
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
 });
 
-const recent = computed(() => (twin.value?.timeline ?? []).slice(0, 4));
-const unread = computed(() => notifications.value?.unread ?? 0);
-
 const observations = computed<Observation[]>(() => twin.value?.observations ?? []);
 
 function findObs(...needles: string[]): Observation | undefined {
@@ -34,49 +30,98 @@ function findObs(...needles: string[]): Observation | undefined {
   return hay.find((o) => needles.some((n) => `${o.label} ${o.code}`.toLowerCase().includes(n)));
 }
 
-const vitals = computed(() => {
-  const systolic = findObs('systolic', 'blood pressure');
-  const heart = findObs('heart', 'pulse');
-  const glucose = findObs('glucose', 'hba1c');
-  return [
-    {
-      label: 'Blood Pressure',
-      value: systolic?.value ?? 132,
-      unit: systolic?.unit || 'mmHg',
-      tone: 'bg-rose-50 text-rose-500',
-      icon: 'M3 12h4l2-5 3 10 2-5h7',
-    },
-    {
-      label: 'Heart Rate',
-      value: heart?.value ?? 72,
-      unit: heart?.unit || 'bpm',
-      tone: 'bg-amber-50 text-amber-500',
-      icon: 'M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z',
-    },
-    {
-      label: 'Blood Glucose',
-      value: glucose?.value ?? 7.1,
-      unit: glucose?.unit || '%',
-      tone: 'bg-brand-50 text-brand-600',
-      icon: 'M9 3h6v4l3 8a4 4 0 01-4 5h-4a4 4 0 01-4-5l3-8z',
-    },
-  ];
-});
+interface Vital {
+  key: string;
+  label: string;
+  display: string;
+  unit: string;
+  flag: string;
+  note: string;
+  spark: number[];
+  annotationStyle: string;
+}
 
-/** Smooth, deterministic waveform — a readable signal envelope rather than noise. */
-const waveValues = computed(() => {
-  const seed = observations.value.map((o) => Math.abs(o.value ?? 0));
-  const amplitude = seed.length ? Math.min(1, Math.max(...seed) / 140) : 0.6;
+/** Deterministic mini-sparkline seeded by the measured value. */
+function sparkFor(value: number, level = 1): number[] {
+  const base = Math.min(1, Math.abs(value) / 100) || 0.5;
   const out: number[] = [];
-  for (let i = 0; i < 46; i += 1) {
-    const envelope = 0.42 + 0.42 * Math.sin((i / 46) * Math.PI) ** 2;
-    const ripple = 0.10 * Math.sin(i * 0.85) + 0.06 * Math.sin(i * 2.1);
-    out.push(Math.max(0.08, (envelope + ripple) * amplitude) * 100);
+  for (let i = 0; i < 16; i += 1) {
+    const wave = 0.55 + 0.3 * Math.sin((i / 16) * Math.PI * 2 * level + base * 6);
+    out.push(Math.max(0.15, wave * base + 0.12) * 100);
   }
   return out;
+}
+
+function vitalFrom(obs: Observation | undefined, fallback: string, partial: Omit<Vital, 'display' | 'flag'>): Vital {
+  let display = obs?.displayValue || fallback;
+  const unit = partial.unit;
+  // displayValue often embeds the unit ("132 mmHg") — strip it so the template shows one unit.
+  if (unit && display.toLowerCase().includes(unit.toLowerCase())) {
+    display = display.replace(new RegExp(unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '').trim();
+  }
+  return {
+    ...partial,
+    display,
+    flag: obs?.flag || 'NORMAL',
+  };
+}
+
+const vitals = computed<Vital[]>(() => {
+  const heart = findObs('heart', 'pulse');
+  const bp = findObs('systolic', 'blood pressure');
+  const spo2 = findObs('spo2', 'oxygen');
+  const glucose = findObs('glucose', 'hba1c');
+  const hrv = findObs('hrv', 'variability');
+  const list: Vital[] = [
+    vitalFrom(heart, '72', {
+      key: 'heart', label: 'Heart Rate', unit: 'bpm', note: 'Resting pulse',
+      spark: sparkFor(heart?.value ?? 72, 3), annotationStyle: 'left-[8%] top-[30%]',
+    }),
+    vitalFrom(bp, '132', {
+      key: 'bp', label: 'Blood Pressure', unit: bp?.unit || 'mmHg', note: 'Systolic reading',
+      spark: sparkFor(bp?.value ?? 132, 2), annotationStyle: 'left-[55%] top-[14%]',
+    }),
+    vitalFrom(spo2, '97', {
+      key: 'spo2', label: 'SpO₂', unit: '%', note: 'Oxygen saturation',
+      spark: sparkFor(spo2?.value ?? 97, 1.4), annotationStyle: 'left-[46%] top-[62%]',
+    }),
+    vitalFrom(glucose, '7.1', {
+      key: 'glucose', label: 'Blood Glucose', unit: glucose?.unit || 'mmol/L', note: 'Latest panel',
+      spark: sparkFor(glucose?.value ?? 7.1, 2.2), annotationStyle: 'left-[10%] top-[74%]',
+    }),
+  ];
+  if (hrv) {
+    list.push(vitalFrom(hrv, '46', {
+      key: 'hrv', label: 'HRV', unit: hrv.unit || 'ms', note: 'Autonomic balance',
+      spark: sparkFor(hrv.value ?? 46, 2.6), annotationStyle: 'left-[64%] top-[48%]',
+    }));
+  }
+  return list;
 });
 
-const flags = computed(() => observations.value.filter((o) => o.flag === 'HIGH' || o.flag === 'LOW').length);
+const vitalsNoBp = computed(() => vitals.value.filter((v) => v.key !== 'bp'));
+
+/** Flagged observations become twin insight cards, worst first. */
+const severityOf = (flag: string) =>
+  flag === 'CRITICAL' ? 'HIGH' : flag === 'HIGH' ? 'MEDIUM' : flag === 'LOW' ? 'LOW' : null;
+
+const insights = computed(() =>
+  observations.value
+    .filter((o) => severityOf(o.flag))
+    .sort((a, b) => (severityOf(b.flag) === 'HIGH' ? 1 : 0) - (severityOf(a.flag) === 'HIGH' ? 1 : 0))
+    .slice(0, 4)
+    .map((o) => ({
+      id: o.id,
+      level: severityOf(o.flag) as 'HIGH' | 'MEDIUM' | 'LOW',
+      title: o.label,
+      body: `${o.displayValue}${o.unit && !o.displayValue.toLowerCase().includes(o.unit.toLowerCase()) ? ` ${o.unit}` : ''} — outside the expected range${o.referenceRange ? ` (${o.referenceRange})` : ''}.`,
+      when: o.observedAt,
+    })),
+);
+
+const recent = computed(() => (twin.value?.timeline ?? []).slice(0, 4));
+const unread = computed(() => notifications.value?.unread ?? 0);
+const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEffective).length ?? 0);
 </script>
 
 <template>
@@ -92,9 +137,9 @@ const flags = computed(() => observations.value.filter((o) => o.flag === 'HIGH' 
         </p>
       </div>
       <div class="flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-3.5 py-2.5">
-        <span class="h-2 w-2 rounded-full bg-brand-500" />
+        <span class="h-2 w-2 animate-pulse rounded-full bg-brand-500" />
         <div class="leading-tight">
-          <p class="dash-label">Last updated</p>
+          <p class="dash-label">Last sync</p>
           <p class="text-[12px] font-semibold text-ink-700">{{ formatDateTime(twin?.freshness.lastUpdated ?? null) }}</p>
         </div>
       </div>
@@ -102,89 +147,199 @@ const flags = computed(() => observations.value.filter((o) => o.flag === 'HIGH' 
 
     <p v-if="error" class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ error }}</p>
 
-    <div v-if="loading && !twin" class="grid gap-4 lg:grid-cols-2">
-      <div v-for="i in 2" :key="i" class="dash-card h-64 animate-pulse bg-ink-100" />
+    <div v-if="loading && !twin" class="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
+      <div v-for="i in 3" :key="i" class="shimmer h-[540px] animate-pulse rounded-[18px] bg-ink-100" />
     </div>
 
     <template v-else-if="twin">
-      <!-- Hero: completeness + clinician photo -->
-      <div class="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.45fr)]">
-        <div class="dash-card dash-card-pad flex flex-col" v-reveal>
-          <div class="flex items-start gap-3">
-            <span class="dash-icon-tile">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M12 3a9 9 0 109 9M12 3v9h9" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="dash-section-title">Digital Twin Completeness</p>
-              <p class="dash-section-sub mt-0.5">How much of your profile is filled in</p>
+      <div class="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+        <!-- Left rail: monitoring status + vitals -->
+        <div class="space-y-3" v-reveal>
+          <div class="dash-card dash-card-pad">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="dash-section-title">Active Monitoring</p>
+                <p class="dash-section-sub mt-0.5">Patient ID · P-{{ auth.user?.id?.slice(0, 4).toUpperCase() ?? '····' }}</p>
+              </div>
+              <span class="chip bg-brand-50 text-brand-700">Active</span>
             </div>
-          </div>
-          <div class="flex flex-1 items-center justify-center py-5">
-            <RingGauge :value="completeness" :size="180" :caption="''" />
-          </div>
-          <div class="dash-info">
-            Based on {{ 12 }} profile and record sections. Completeness describes data coverage only — never a health assessment.
-          </div>
-        </div>
-
-        <div class="space-y-4" v-reveal:1>
-          <div class="relative h-[228px] overflow-hidden rounded-2xl border border-ink-200/70 bg-white shadow-card sm:h-[248px]">
-            <img :src="clinicianPhoto" alt="A clinician ready to help" class="h-full w-full object-cover object-center" />
-            <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/5 via-transparent to-brand-900/10" />
-            <div class="absolute bottom-5 left-5 rounded-xl border border-ink-200 bg-white px-4 py-3 shadow-card">
-              <p class="text-[13px] font-bold text-ink-900">{{ twin.counts.records }} records · {{ twin.medications.length }} medications</p>
-              <p class="mt-0.5 text-[11px] text-ink-500">{{ flags }} observation{{ flags === 1 ? '' : 's' }} outside reference range</p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3">
-            <div
-              v-for="vital in vitals"
-              :key="vital.label"
-              class="dash-card flex flex-col gap-2 p-4 transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              <div class="flex items-center justify-between">
-                <span class="flex h-9 w-9 items-center justify-center rounded-full" :class="vital.tone">
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                    <path :d="vital.icon" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-                <span class="dash-label">Vital</span>
+            <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-[12px]">
+              <div>
+                <dt class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Data points</dt>
+                <dd class="mt-0.5 font-bold text-ink-800">{{ twin.counts.observations.toLocaleString() }}</dd>
               </div>
               <div>
-                <p class="text-[17px] font-bold leading-tight tracking-tight text-ink-900">{{ vital.value }}</p>
-                <p class="mt-0.5 text-[11px] text-ink-500">{{ vital.label }} · {{ vital.unit }}</p>
+                <dt class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Records</dt>
+                <dd class="mt-0.5 font-bold text-ink-800">{{ twin.counts.records }}</dd>
+              </div>
+              <div>
+                <dt class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Consents</dt>
+                <dd class="mt-0.5 font-bold text-ink-800">{{ activeConsents }} active</dd>
+              </div>
+              <div>
+                <dt class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Medications</dt>
+                <dd class="mt-0.5 font-bold text-ink-800">{{ twin.medications.length }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div
+            v-for="vital in vitals"
+            :key="vital.key"
+            class="dash-card p-4"
+          >
+            <div class="flex items-start justify-between">
+              <p class="text-[12.5px] font-semibold text-ink-700">{{ vital.label }}</p>
+              <span
+                class="text-[13px] font-bold"
+                :class="vital.flag === 'HIGH' || vital.flag === 'CRITICAL' ? 'text-terracotta'
+                  : vital.flag === 'LOW' ? 'text-brand-600' : 'text-brand-700'"
+              >
+                {{ vital.flag === 'HIGH' || vital.flag === 'CRITICAL' ? '↑' : vital.flag === 'LOW' ? '↓' : '→' }}
+              </span>
+            </div>
+            <p class="mt-1">
+              <span
+                class="text-[30px] font-extrabold leading-none tracking-tight"
+                :class="vital.flag === 'HIGH' || vital.flag === 'CRITICAL' ? 'text-terracotta-dark'
+                  : vital.flag === 'LOW' ? 'text-brand-600' : 'text-ink-900'"
+              >{{ vital.display }}</span>
+              <span class="ml-1 text-[12px] font-medium text-ink-400">{{ vital.unit }}</span>
+            </p>
+            <div class="mt-2 h-9">
+              <TrendChart :values="vital.spark" kind="bars" :height="36" color="#101585" />
+            </div>
+            <p class="mt-1.5 text-[10.5px] text-ink-400">{{ vital.note }}</p>
+          </div>
+        </div>
+
+        <!-- Center: twin body hero with floating annotations -->
+        <div class="dash-card relative overflow-hidden" v-reveal:1>
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-50/60 via-transparent to-lavender-light/30" />
+          <div class="relative flex h-full min-h-[540px] flex-col">
+            <div class="flex items-center justify-between px-5 pt-5">
+              <div class="flex items-center gap-3">
+                <span class="dash-icon-tile">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M12 3a4 4 0 110 8 4 4 0 010-8zM4 21a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <div>
+                  <p class="dash-section-title">Live Twin View</p>
+                  <p class="dash-section-sub mt-0.5">Annotated signals from your records</p>
+                </div>
+              </div>
+              <span class="chip border border-brand-100 bg-white/80 text-brand-700 backdrop-blur">Twin completeness {{ completeness }}%</span>
+            </div>
+
+            <div class="relative flex-1">
+              <img :src="bodyMap" alt="Anatomical map of your Digital Twin" class="absolute inset-0 mx-auto h-full w-full max-w-[520px] object-contain px-2 pb-28 pt-4" />
+              <!-- Floating glass annotations -->
+              <div
+                v-for="(vital, i) in vitalsNoBp"
+                :key="vital.key"
+                class="absolute w-[178px] rounded-2xl border border-white/70 bg-white/75 px-3.5 py-2.5 shadow-card backdrop-blur-md transition-transform duration-300 hover:scale-[1.03]"
+                :class="vital.annotationStyle"
+                :style="{ animation: `fade-up 0.5s ease-out ${0.15 * i + 0.2}s both` }"
+              >
+                <p class="text-[10.5px] font-semibold uppercase tracking-wide text-ink-400">{{ vital.label }}</p>
+                <p class="mt-0.5 text-[15px] font-extrabold text-ink-900">
+                  {{ vital.display }} <span class="text-[11px] font-medium text-ink-400">{{ vital.unit }}</span>
+                </p>
+                <span class="absolute -bottom-1.5 left-6 h-3 w-3 rounded-full border-2 border-white bg-brand-500 shadow" />
+              </div>
+
+              <!-- Summary report glass card -->
+              <div class="absolute bottom-5 left-1/2 w-[min(420px,88%)] -translate-x-1/2 rounded-2xl border border-white/70 bg-white/80 px-5 py-4 shadow-lift backdrop-blur-md">
+                <div class="flex items-center justify-between">
+                  <p class="text-[13.5px] font-bold text-ink-900">Summary Report</p>
+                  <RouterLink
+                    to="/patient/assistant"
+                    class="rounded-lg bg-brand-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-brand-700"
+                  >Suggested action</RouterLink>
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Data points</p>
+                    <p class="mt-0.5 text-[18px] font-extrabold text-ink-900">{{ twin.counts.observations.toLocaleString() }}</p>
+                  </div>
+                  <div class="border-x border-ink-100">
+                    <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Completeness</p>
+                    <p class="mt-0.5 text-[18px] font-extrabold text-brand-700">{{ completeness }} %</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Anomalies</p>
+                    <p class="mt-0.5 text-[18px] font-extrabold" :class="insights.length ? 'text-terracotta-dark' : 'text-ink-900'">{{ insights.length }}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Measurement waveform -->
-      <div class="dash-card dash-card-pad mt-5" v-reveal>
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="flex items-start gap-3">
-            <span class="dash-icon-tile">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M2 12h4l2-6 4 12 3-8 2 2h5" stroke-linecap="round" stroke-linejoin="round" />
+        <!-- Right rail: AI-detected insights -->
+        <div class="space-y-3" v-reveal:2>
+          <div class="flex items-center justify-between px-1">
+            <p class="dash-section-title">Twin Insights</p>
+            <span class="dash-label">AI detected</span>
+          </div>
+
+          <template v-if="insights.length">
+            <div
+              v-for="insight in insights"
+              :key="insight.id"
+              class="dash-card p-4"
+            >
+              <div class="flex items-center justify-between">
+                <span
+                  class="chip"
+                  :class="insight.level === 'HIGH' ? 'bg-terracotta-light text-terracotta-dark'
+                    : insight.level === 'MEDIUM' ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full current-color" :class="insight.level === 'HIGH' ? 'bg-terracotta' : insight.level === 'MEDIUM' ? 'bg-amber-500' : 'bg-sky-500'" />
+                  {{ insight.level }}
+                </span>
+              </div>
+              <p class="mt-2 text-[13.5px] font-bold text-ink-900">{{ insight.title }}</p>
+              <p class="mt-1 text-[12px] leading-relaxed text-ink-600">{{ insight.body }}</p>
+              <div class="mt-3 flex items-center justify-between border-t border-ink-100 pt-2.5">
+                <span class="text-[10.5px] font-medium text-ink-400">Twin insight · source-linked</span>
+                <span class="text-[10.5px] text-ink-400">{{ formatDateTime(insight.when) }}</span>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="dash-card dash-card-pad text-center">
+            <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+              <svg class="h-5 w-5 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </span>
-            <div>
-              <p class="dash-section-title">Recent measurements</p>
-              <p class="dash-section-sub mt-0.5">Signal envelope across {{ observations.length }} structured observations</p>
-            </div>
+            <p class="mt-3 text-[13.5px] font-bold text-ink-900">All readings in range</p>
+            <p class="mt-1 text-[12px] leading-relaxed text-ink-500">
+              No observation is currently flagged outside its reference range. New results appear here automatically.
+            </p>
           </div>
-          <span class="chip bg-brand-50 text-brand-700">Source-linked</span>
-        </div>
-        <div class="mt-4 h-[110px]">
-          <TrendChart :values="waveValues" kind="wave" :height="110" />
+
+          <div class="dash-card p-4">
+            <p class="text-[12.5px] font-semibold text-ink-700">Recent activity</p>
+            <ul class="mt-2.5 space-y-2.5">
+              <li v-for="event in recent.slice(0, 3)" :key="event.id" class="flex items-start gap-2.5">
+                <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
+                <div class="min-w-0">
+                  <p class="truncate text-[12px] font-semibold text-ink-800">{{ event.title }}</p>
+                  <p class="truncate text-[10.5px] text-ink-400">{{ formatDateTime(event.occurredAt) }}</p>
+                </div>
+              </li>
+              <li v-if="!recent.length" class="text-[12px] text-ink-400">No activity yet.</li>
+            </ul>
+            <RouterLink to="/patient/records" class="mt-3 inline-block text-[11px] font-semibold text-brand-700 hover:underline">View all →</RouterLink>
+          </div>
         </div>
       </div>
 
       <!-- Primary CTA -->
-      <div class="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" v-reveal>
+      <div class="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" v-reveal>
         <RouterLink
           to="/patient/assistant"
           class="flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 py-4 text-[14px] font-bold text-white
@@ -193,71 +348,13 @@ const flags = computed(() => observations.value.filter((o) => o.flag === 'HIGH' 
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M4 5h16v11H9l-5 4z" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          Open AI Health Assistant →
+          Ask the AI Health Assistant about these results →
         </RouterLink>
         <RouterLink to="/patient/records" class="btn-secondary flex items-center justify-center px-6 text-[13px] font-semibold">
           View my records
         </RouterLink>
       </div>
       <p class="mt-3 text-center text-[11px] text-ink-400">MedTwin AI is for information only — not medical diagnosis</p>
-
-      <!-- Recent activity -->
-      <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div class="dash-card dash-card-pad" v-reveal>
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex items-start gap-3">
-              <span class="dash-icon-tile">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                  <path d="M12 8v4l3 2M12 3a9 9 0 100 18 9 9 0 000-18z" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-              <div>
-                <p class="dash-section-title">Recent activity</p>
-                <p class="dash-section-sub mt-0.5">Latest events in your timeline</p>
-              </div>
-            </div>
-            <RouterLink to="/patient/records" class="text-xs font-semibold text-brand-700 hover:underline">View all →</RouterLink>
-          </div>
-          <ul class="mt-4 divide-y divide-ink-100">
-            <li v-for="event in recent" :key="event.id" class="flex items-start justify-between gap-3 py-3">
-              <div class="flex min-w-0 items-start gap-3">
-                <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />
-                <div class="min-w-0">
-                  <p class="truncate text-[13px] font-semibold text-ink-800">{{ event.title }}</p>
-                  <p class="mt-0.5 truncate text-[11px] text-ink-400">{{ event.description }}</p>
-                </div>
-              </div>
-              <span class="shrink-0 text-[11px] text-ink-400">{{ formatDateTime(event.occurredAt) }}</span>
-            </li>
-            <li v-if="!recent.length" class="py-3 text-[13px] text-ink-400">No activity yet.</li>
-          </ul>
-        </div>
-
-        <div class="dash-card dash-card-pad" v-reveal:1>
-          <div class="flex items-start gap-3">
-            <span class="dash-icon-tile">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="dash-section-title">Your data, your control</p>
-              <p class="dash-section-sub mt-0.5">Consent and notifications at a glance</p>
-            </div>
-          </div>
-          <div class="mt-4 grid grid-cols-2 gap-3">
-            <RouterLink to="/patient/consent" class="rounded-xl bg-brand-50 px-3 py-3 transition-colors hover:bg-brand-100">
-              <p class="text-lg font-bold text-brand-700">{{ twin.consents.filter((c) => c.isEffective).length }}</p>
-              <p class="text-[11px] text-ink-500">Active consents</p>
-            </RouterLink>
-            <RouterLink to="/patient/notifications" class="rounded-xl bg-surface-100 px-3 py-3 transition-colors hover:bg-surface-200">
-              <p class="text-lg font-bold text-ink-800">{{ unread }}</p>
-              <p class="text-[11px] text-ink-500">Unread updates</p>
-            </RouterLink>
-          </div>
-          <RouterLink to="/patient/twin" class="dash-btn dash-btn-soft mt-4 w-full">View my Digital Twin</RouterLink>
-        </div>
-      </div>
     </template>
   </div>
 </template>
