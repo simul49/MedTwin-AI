@@ -14,12 +14,13 @@
   body {
     @apply text-ink-900 antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
-    background-color: #f5f8fa;
+    /* Pale Mist Blue base (#F0F4F8) with Deep Navy (#102A43) light washes */
+    background-color: #f0f4f8;
     background-image:
-      radial-gradient(900px 520px at 10% -10%, rgba(16, 21, 133, 0.08), transparent 65%),
-      radial-gradient(820px 460px at 92% 2%, rgba(167, 139, 250, 0.08), transparent 62%),
-      radial-gradient(700px 500px at 55% 108%, rgba(226, 114, 91, 0.06), transparent 60%),
-      linear-gradient(180deg, #fbfcff 0%, #f5f7fc 52%, #eef2fa 100%);
+      radial-gradient(900px 520px at 10% -10%, rgba(16, 42, 67, 0.06), transparent 65%),
+      radial-gradient(820px 460px at 92% 2%, rgba(167, 139, 250, 0.07), transparent 62%),
+      radial-gradient(700px 500px at 55% 108%, rgba(226, 114, 91, 0.05), transparent 60%),
+      linear-gradient(180deg, #f5f8fc 0%, #f0f4f8 52%, #e6edf5 100%);
     background-attachment: fixed;
   }
 
@@ -353,11 +354,11 @@
 }
 
 .dark-band {
-  color: #eaf3ff;
+  color: #e8f0fa;
   background-image:
-    radial-gradient(700px 380px at 12% 15%, rgba(167, 139, 250, 0.18), transparent 65%),
-    radial-gradient(760px 420px at 88% 85%, rgba(63, 91, 209, 0.38), transparent 65%),
-    linear-gradient(130deg, #00123a 0%, #00246b 52%, #101585 100%);
+    radial-gradient(700px 380px at 12% 15%, rgba(167, 139, 250, 0.16), transparent 65%),
+    radial-gradient(760px 420px at 88% 85%, rgba(63, 91, 209, 0.35), transparent 65%),
+    linear-gradient(130deg, #071524 0%, #102a43 52%, #16355a 100%);
 }
 
 .gradient-text {
