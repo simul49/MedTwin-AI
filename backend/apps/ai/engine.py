@@ -38,11 +38,16 @@ def answer_question(*, user, message: str, conversation=None, language: str = "e
     trace = trace_id()
 
     intent_result = classify(message)
+    casual = providers.is_casual_message(message)
     clinical = getattr(user, "role", "") == "DOCTOR"
-    passages = retrieval.retrieve(message, top_k=5, clinical=clinical)
+    passages = [] if casual else retrieval.retrieve(message, top_k=5, clinical=clinical)
 
     twin_context: Dict[str, list] = {}
-    if getattr(user, "role", "") == "PATIENT" and intent_result.risk_category == "NORMAL":
+    if (
+        not casual
+        and getattr(user, "role", "") == "PATIENT"
+        and intent_result.risk_category == "NORMAL"
+    ):
         twin_context = retrieval.build_twin_context(user, _context_categories(intent_result.intent))
 
     passage_dicts = [p.as_citation(i) for i, p in enumerate(passages, start=1)]
@@ -73,7 +78,10 @@ def answer_question(*, user, message: str, conversation=None, language: str = "e
             generated = providers.generate(
                 system=providers.SYSTEM_PROMPT,
                 user=providers.build_user_prompt(
-                    message=message, passages=prompt_passages, twin_context=twin_context
+                    message=message,
+                    passages=prompt_passages,
+                    twin_context=twin_context,
+                    casual=casual,
                 ),
                 passages=passage_dicts,
             )
