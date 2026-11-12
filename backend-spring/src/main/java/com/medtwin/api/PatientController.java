@@ -203,6 +203,39 @@ public class PatientController {
         return J.map("results", observations(Ctx.user().id, 100));
     }
 
+    @PostMapping("/patient/observations/")
+    public ResponseEntity<Object> createObservation(@RequestBody(required = false) Map<String, Object> body) {
+        access.require("PATIENT");
+        String label = J.gs(body, "label").trim();
+        if (label.isEmpty()) throw ApiError.bad("Label the measurement.");
+        String valueRaw = J.gs(body, "value").trim();
+        if (valueRaw.isEmpty()) throw ApiError.bad("Provide the measured value.");
+        Double numeric = null;
+        try {
+            numeric = Double.valueOf(valueRaw);
+        } catch (NumberFormatException ignored) {
+            // free-text value is stored in value_text
+        }
+        String flag = upperOr(J.gs(body, "flag"), "UNKNOWN");
+        if (!Set.of("NORMAL", "LOW", "HIGH", "CRITICAL", "UNKNOWN").contains(flag)) {
+            throw ApiError.bad("Unknown flag.");
+        }
+        String observedAt = firstNonBlank(body, "observed_at", "observedAt");
+        String id = J.uuid();
+        db.exec("INSERT INTO observations (id, patient_id, label, value_numeric, value_text, unit, "
+                        + "reference_range, flag, observed_at, source_type, created_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'USER', ?)",
+                id, Ctx.user().id, label, numeric, numeric == null ? valueRaw : null,
+                blankToNull(J.gs(body, "unit").trim()),
+                blankToNull(firstNonBlank(body, "reference_range", "referenceRange")),
+                flag,
+                blankToNull(observedAt) == null ? J.ts() : observedAt,
+                J.ts());
+        audit.log("OBSERVATION_CREATE", "observation", id, "SUCCESS", null);
+        return ResponseEntity.status(201).body(
+                Views.observation(db.require("SELECT * FROM observations WHERE id = ?", id)));
+    }
+
     @GetMapping("/patient/allergies/")
     public Map<String, Object> listAllergies() {
         access.require("PATIENT");

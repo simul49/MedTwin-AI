@@ -16,7 +16,8 @@ const tabs = [
 const active = ref('history');
 const showAdd = ref(false);
 const saving = ref(false);
-const form = ref({ title: '', category: 'NOTE', summary: '' });
+const addError = ref<string | null>(null);
+const form = ref<Record<string, string>>({});
 
 interface Row {
   name: string;
@@ -25,6 +26,99 @@ interface Row {
   dosage: string;
   notes: string;
 }
+
+interface FieldDef {
+  key: string;
+  label: string;
+  type: 'text' | 'textarea' | 'date' | 'select';
+  required?: boolean;
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+}
+
+const FIELD_DEFS: Record<string, FieldDef[]> = {
+  history: [
+    { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Annual check-up' },
+    {
+      key: 'category', label: 'Category', type: 'select',
+      options: [
+        { value: 'NOTE', label: 'Note' },
+        { value: 'CONDITION', label: 'Condition' },
+        { value: 'FAMILY_HISTORY', label: 'Family history' },
+        { value: 'PROCEDURE', label: 'Procedure' },
+      ],
+    },
+    { key: 'summary', label: 'Notes', type: 'textarea' },
+  ],
+  allergies: [
+    { key: 'substance', label: 'Substance', type: 'text', required: true, placeholder: 'e.g. Penicillin' },
+    {
+      key: 'severity', label: 'Severity', type: 'select',
+      options: [
+        { value: 'MILD', label: 'Mild' },
+        { value: 'MODERATE', label: 'Moderate' },
+        { value: 'SEVERE', label: 'Severe' },
+        { value: 'UNKNOWN', label: 'Unknown' },
+      ],
+    },
+    { key: 'reaction', label: 'Reaction', type: 'text', placeholder: 'e.g. Rash, swelling' },
+    {
+      key: 'status', label: 'Status', type: 'select',
+      options: [
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'RESOLVED', label: 'Resolved' },
+        { value: 'UNKNOWN', label: 'Unknown' },
+      ],
+    },
+  ],
+  medications: [
+    { key: 'name', label: 'Medication', type: 'text', required: true, placeholder: 'e.g. Metformin' },
+    { key: 'dose', label: 'Dose', type: 'text', placeholder: 'e.g. 500 mg' },
+    { key: 'frequency', label: 'Frequency', type: 'text', placeholder: 'e.g. Twice daily' },
+    { key: 'route', label: 'Route', type: 'text', placeholder: 'e.g. Oral' },
+    {
+      key: 'status', label: 'Status', type: 'select',
+      options: [
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'STOPPED', label: 'Stopped' },
+        { value: 'UNKNOWN', label: 'Unknown' },
+      ],
+    },
+    { key: 'startedAt', label: 'Started on', type: 'date' },
+  ],
+  labs: [
+    { key: 'label', label: 'Test name', type: 'text', required: true, placeholder: 'e.g. HbA1c' },
+    { key: 'value', label: 'Value', type: 'text', required: true, placeholder: 'e.g. 6.2' },
+    { key: 'unit', label: 'Unit', type: 'text', placeholder: 'e.g. %' },
+    { key: 'referenceRange', label: 'Reference range', type: 'text', placeholder: 'e.g. 4.0 – 5.6' },
+    {
+      key: 'flag', label: 'Flag', type: 'select',
+      options: [
+        { value: 'NORMAL', label: 'Normal' },
+        { value: 'LOW', label: 'Low' },
+        { value: 'HIGH', label: 'High' },
+        { value: 'CRITICAL', label: 'Critical' },
+        { value: 'UNKNOWN', label: 'Unknown' },
+      ],
+    },
+    { key: 'observedAt', label: 'Date', type: 'date' },
+  ],
+  notes: [
+    { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Question for my doctor' },
+    { key: 'summary', label: 'Notes', type: 'textarea' },
+  ],
+};
+
+const modalTitle = computed(() => {
+  switch (active.value) {
+    case 'history': return 'Add a medical history entry';
+    case 'allergies': return 'Add an allergy';
+    case 'medications': return 'Add a medication';
+    case 'labs': return 'Add a lab result';
+    case 'notes': return 'Add a note';
+    default: return 'Add a record';
+  }
+});
 
 const rows = computed<Row[]>(() => {
   const t = twin.value;
@@ -48,21 +142,44 @@ const rows = computed<Row[]>(() => {
       return t.observations.map((o) => ({ name: o.label, start: formatDate(o.observedAt), end: o.flag, dosage: o.displayValue, notes: o.referenceRange || '—' }));
     case 'notes':
       return t.records
-        .filter((r) => r.sourceType === 'CLINICIAN' || r.isAiGenerated)
+        .filter((r) => r.sourceType === 'CLINICIAN' || r.isAiGenerated || r.category === 'NOTE')
         .map((r) => ({ name: r.title, start: formatDate(r.createdAt), end: r.verificationStatus, dosage: r.sourceType, notes: r.summary || '—' }));
     default:
       return [];
   }
 });
 
-async function addRecord() {
-  if (!form.value.title.trim()) return;
+function openAdd() {
+  form.value = {};
+  addError.value = null;
+  showAdd.value = true;
+}
+
+async function addEntry() {
+  const payload: Record<string, unknown> = { ...form.value };
   saving.value = true;
+  addError.value = null;
   try {
-    await patient.createRecord({ ...form.value });
-    form.value = { title: '', category: 'NOTE', summary: '' };
+    switch (active.value) {
+      case 'history':
+      case 'notes':
+        await patient.createRecord({ ...payload, category: payload.category || 'NOTE' });
+        break;
+      case 'allergies':
+        await patient.createAllergy(payload);
+        break;
+      case 'medications':
+        await patient.createMedication(payload);
+        break;
+      case 'labs':
+        await patient.createObservation(payload);
+        break;
+    }
+    form.value = {};
     showAdd.value = false;
     await run();
+  } catch (exc) {
+    addError.value = exc instanceof Error ? exc.message : 'Could not save the entry.';
   } finally {
     saving.value = false;
   }
@@ -77,7 +194,7 @@ async function addRecord() {
         <h1 class="text-[28px] font-bold leading-tight tracking-tight text-ink-900">Your personal medical digital twin</h1>
         <p class="mt-2 text-[14px] text-ink-500">You own your health records. Review, add and verify every entry.</p>
       </div>
-      <button class="dash-btn" @click="showAdd = true">＋ Add new record</button>
+      <button v-if="active !== 'profile'" class="dash-btn" @click="openAdd">＋ Add new {{ active === 'allergies' ? 'allergy' : active === 'medications' ? 'medication' : active === 'labs' ? 'lab result' : 'record' }}</button>
     </div>
 
     <!-- Tabs -->
@@ -143,33 +260,42 @@ async function addRecord() {
       Every item keeps its source. AI-generated drafts are labelled and require clinician verification.
     </p>
 
-    <!-- Add record modal -->
+    <!-- Add entry modal (form adapts to the active tab) -->
     <div v-if="showAdd" class="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4" @click.self="showAdd = false">
       <div class="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-6 shadow-lift">
-        <h2 class="text-lg font-bold text-ink-900">Add a record</h2>
+        <h2 class="text-lg font-bold text-ink-900">{{ modalTitle }}</h2>
         <p class="mt-1 text-[12px] text-ink-500">The entry is attributed to you and can be edited later.</p>
-        <form class="mt-5 space-y-3" @submit.prevent="addRecord">
-          <div>
-            <label class="label" for="r-title">Title</label>
-            <input id="r-title" v-model="form.title" class="input" required placeholder="e.g. Annual check-up" />
-          </div>
-          <div>
-            <label class="label" for="r-category">Category</label>
-            <select id="r-category" v-model="form.category" class="input">
-              <option value="NOTE">Note</option>
-              <option value="CONDITION">Condition</option>
-              <option value="LAB">Lab result</option>
-              <option value="MEDICATION">Medication</option>
-              <option value="VITAL">Vital measurement</option>
+        <form class="mt-5 space-y-3" @submit.prevent="addEntry">
+          <div v-for="field in FIELD_DEFS[active] ?? FIELD_DEFS.history" :key="field.key">
+            <label class="label" :for="`f-${field.key}`">{{ field.label }}</label>
+            <select
+              v-if="field.type === 'select'"
+              :id="`f-${field.key}`"
+              v-model="form[field.key]"
+              class="input"
+            >
+              <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
+            <textarea
+              v-else-if="field.type === 'textarea'"
+              :id="`f-${field.key}`"
+              v-model="form[field.key]"
+              class="input min-h-20"
+            />
+            <input
+              v-else
+              :id="`f-${field.key}`"
+              v-model="form[field.key]"
+              class="input"
+              :type="field.type"
+              :required="field.required"
+              :placeholder="field.placeholder"
+            />
           </div>
-          <div>
-            <label class="label" for="r-summary">Notes</label>
-            <textarea id="r-summary" v-model="form.summary" class="input min-h-20" />
-          </div>
+          <p v-if="addError" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ addError }}</p>
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary text-xs" @click="showAdd = false">Cancel</button>
-            <button type="submit" class="dash-btn" :disabled="saving">Save record</button>
+            <button type="submit" class="dash-btn" :disabled="saving">Save entry</button>
           </div>
         </form>
       </div>

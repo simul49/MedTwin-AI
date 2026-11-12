@@ -66,7 +66,8 @@ export const patient = {
   allergies: () => list<import('./types').Allergy>('/patient/allergies/'),
   createAllergy: (payload: Record<string, unknown>) =>
     api.post<import('./types').Allergy>('/patient/allergies/', payload),
-  updateAllergy: (id: string, payload: Record<string, unknown>) =>
+  createObservation: (payload: Record<string, unknown>) =>
+    api.post<import('./types').Observation>('/patient/observations/', payload),  updateAllergy: (id: string, payload: Record<string, unknown>) =>
     api.patch<import('./types').Allergy>(`/patient/allergies/${id}/`, payload),
   deleteAllergy: (id: string) => api.del<void>(`/patient/allergies/${id}/`),
   medications: () => list<import('./types').Medication>('/patient/medications/'),
