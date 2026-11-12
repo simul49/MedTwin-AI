@@ -113,17 +113,18 @@ async function ask(rawText: string) {
   try {
     const reply = await ai.publicChat(text.slice(0, 1000), locale.value);
     const message: WidgetMessage = { role: 'ai', text: '', full: reply.answer, sources: reply.sources };
-    messages.value.push(message);
+    // Keep the reactive proxy so typewriter mutations trigger re-renders.
+    const reactiveMessage = messages.value[messages.value.push(message) - 1];
     scrollDown();
-    reveal(reply.answer, message, () => {
+    reveal(reply.answer, reactiveMessage, () => {
       sending.value = false;
       scrollDown();
     });
   } catch {
     sending.value = false;
     const last: WidgetMessage = { role: 'ai', text: '', full: t('chatbot.error') };
-    messages.value.push(last);
-    reveal(t('chatbot.error'), last, () => scrollDown());
+    const reactiveLast = messages.value[messages.value.push(last) - 1];
+    reveal(t('chatbot.error'), reactiveLast, () => scrollDown());
   }
 }
 
