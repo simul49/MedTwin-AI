@@ -16,16 +16,16 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
     background-color: #f5f8fa;
     background-image:
-      radial-gradient(900px 520px at 10% -10%, rgba(14, 145, 128, 0.1), transparent 65%),
-      radial-gradient(820px 460px at 92% 2%, rgba(50, 119, 232, 0.08), transparent 62%),
-      radial-gradient(700px 500px at 55% 108%, rgba(56, 199, 176, 0.07), transparent 60%),
-      linear-gradient(180deg, #fafcfd 0%, #f4f8fa 52%, #eef4f7 100%);
+      radial-gradient(900px 520px at 10% -10%, rgba(16, 21, 133, 0.08), transparent 65%),
+      radial-gradient(820px 460px at 92% 2%, rgba(167, 139, 250, 0.08), transparent 62%),
+      radial-gradient(700px 500px at 55% 108%, rgba(226, 114, 91, 0.06), transparent 60%),
+      linear-gradient(180deg, #fbfcff 0%, #f5f7fc 52%, #eef2fa 100%);
     background-attachment: fixed;
   }
 
   ::selection {
-    background: rgba(14, 145, 128, 0.18);
-    color: #0c4c47;
+    background: rgba(16, 21, 133, 0.16);
+    color: #00123a;
   }
 
   :focus-visible {
@@ -81,7 +81,7 @@
   }
 
   .input:focus {
-    box-shadow: 0 0 0 1px rgba(14, 145, 128, 0.18), 0 12px 40px -14px rgba(14, 145, 128, 0.45);
+    box-shadow: 0 0 0 1px rgba(16, 21, 133, 0.16), 0 12px 40px -14px rgba(16, 21, 133, 0.4);
   }
 
   input:-webkit-autofill,
@@ -116,7 +116,7 @@
    Clinical dashboard surfaces
    --------------------------------------------------------------------------- */
 .dash-card {
-  border: 1px solid #e6edf1;
+  border: 1px solid #e6ebf4;
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 12px 32px -20px rgba(15, 23, 42, 0.28);
@@ -126,9 +126,9 @@
 }
 
 .dash-card:hover {
-  border-color: #d9e7ea;
+  border-color: #cddcf8;
   transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 20px 44px -22px rgba(15, 23, 42, 0.32);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 20px 44px -22px rgba(16, 21, 133, 0.24);
 }
 
 .dash-card-pad {
@@ -148,7 +148,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #0e9180;
+  color: #101585;
 }
 
 .dash-section-title {
@@ -172,14 +172,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 0.8rem;
-  background: linear-gradient(135deg, #eafaf7, #dcf5ef);
-  color: #0e9180;
+  background: linear-gradient(135deg, #eef3ff, #dfe7fd);
+  color: #101585;
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
 }
 
 .dash-card:hover .dash-icon-tile {
   transform: scale(1.06);
-  box-shadow: 0 6px 16px -8px rgba(14, 145, 128, 0.45);
+  box-shadow: 0 6px 16px -8px rgba(16, 21, 133, 0.4);
 }
 
 .dash-btn {
@@ -190,14 +190,14 @@
   gap: 0.5rem;
   overflow: hidden;
   border-radius: 0.75rem;
-  background-image: linear-gradient(110deg, #0e9180 20%, #14a992 48%, #0e9180 76%);
+  background-image: linear-gradient(110deg, #101585 20%, #3F5BD1 48%, #101585 76%);
   background-size: 220% 100%;
   padding: 0.7rem 1.25rem;
   font-size: 0.8125rem;
   font-weight: 650;
   letter-spacing: 0.005em;
   color: #fff;
-  box-shadow: 0 6px 16px -12px rgba(14, 145, 128, 0.9);
+  box-shadow: 0 6px 16px -12px rgba(16, 21, 133, 0.9);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   animation: gradient-shift 8s ease infinite;
 }
@@ -223,7 +223,7 @@
 
 .dash-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -10px rgba(14, 145, 128, 0.65);
+  box-shadow: 0 10px 24px -10px rgba(16, 21, 133, 0.65);
 }
 
 .dash-btn:hover::after {
@@ -244,13 +244,13 @@
 }
 
 .dash-btn-soft {
-  background: #eafaf7;
-  color: #0d7469;
+  background: #e3ebfd;
+  color: #00246b;
   box-shadow: none;
 }
 
 .dash-btn-soft:hover {
-  background: #cdf3ec;
+  background: #cadcfc;
 }
 
 .dash-tab {
@@ -269,15 +269,15 @@
 }
 
 .dash-tab-active {
-  background-image: linear-gradient(110deg, #0d7469, #14a992, #0d7469);
+  background-image: linear-gradient(110deg, #00246b, #101585, #00246b);
   background-size: 220% 100%;
   color: #fff;
-  box-shadow: 0 6px 16px -8px rgba(14, 145, 128, 0.8);
+  box-shadow: 0 6px 16px -8px rgba(16, 21, 133, 0.8);
   animation: gradient-shift 8s ease infinite;
 }
 
 .dash-tab-active:hover {
-  background: #0d7469;
+  background: #001b52;
   color: #fff;
 }
 
@@ -312,7 +312,7 @@
 
 .dash-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: #d7e5e8;
+  background: #ccd8ef;
 }
 
 .dash-scroll::-webkit-scrollbar-track {
@@ -333,20 +333,20 @@
 }
 
 .dash-info {
-  border: 1px solid #d7eee8;
+  border: 1px solid #cadcfc;
   border-radius: 14px;
-  background: #f2fbf8;
+  background: #f0f5ff;
   padding: 0.85rem 1rem;
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #3d6b64;
+  color: #2a3a7c;
 }
 
 /* ---------------------------------------------------------------------------
    Premium section surfaces
    --------------------------------------------------------------------------- */
 .bg-mesh {
-  background-image: radial-gradient(rgba(14, 145, 128, 0.14) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(16, 21, 133, 0.13) 1px, transparent 1px);
   background-size: 24px 24px;
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 78%);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 78%);
@@ -355,13 +355,13 @@
 .dark-band {
   color: #eaf3ff;
   background-image:
-    radial-gradient(700px 380px at 12% 15%, rgba(56, 199, 176, 0.18), transparent 65%),
-    radial-gradient(760px 420px at 88% 85%, rgba(50, 119, 232, 0.32), transparent 65%),
-    linear-gradient(130deg, #081c38 0%, #0d2a51 52%, #153a68 100%);
+    radial-gradient(700px 380px at 12% 15%, rgba(167, 139, 250, 0.18), transparent 65%),
+    radial-gradient(760px 420px at 88% 85%, rgba(63, 91, 209, 0.38), transparent 65%),
+    linear-gradient(130deg, #00123a 0%, #00246b 52%, #101585 100%);
 }
 
 .gradient-text {
-  background-image: linear-gradient(95deg, #0d7469 0%, #14a992 38%, #38c7b0 55%, #0e9180 100%);
+  background-image: linear-gradient(95deg, #00246b 0%, #101585 38%, #3f5bd1 55%, #a78bfa 100%);
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;

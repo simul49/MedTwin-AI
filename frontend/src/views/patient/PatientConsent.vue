@@ -122,7 +122,7 @@ onMounted(load);
                 <div class="flex items-center gap-2.5">
                   <span
                     class="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    :style="{ backgroundColor: item.doctor?.avatarColor ?? '#0e9180' }"
+                    :style="{ backgroundColor: item.doctor?.avatarColor ?? '#A47864' }"
                   >
                     {{ item.doctor?.initials ?? 'DR' }}
                   </span>

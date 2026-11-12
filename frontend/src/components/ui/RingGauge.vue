@@ -18,8 +18,8 @@ const center = computed(() => props.size / 2);
     <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`" role="img" :aria-label="`${clamped}% complete`">
       <defs>
         <linearGradient id="gaugeGradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#35bda7" />
-          <stop offset="100%" stop-color="#0d7469" />
+          <stop offset="0%" stop-color="#A78BFA" />
+          <stop offset="100%" stop-color="#101585" />
         </linearGradient>
       </defs>
       <circle

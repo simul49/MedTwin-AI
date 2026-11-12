@@ -218,7 +218,7 @@ onMounted(loadNotifications);
           <div class="flex items-center gap-2 rounded-xl border border-ink-200 px-2 py-1.5">
             <span
               class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-              :style="{ backgroundColor: auth.user?.avatarColor ?? '#0e9180' }"
+              :style="{ backgroundColor: auth.user?.avatarColor ?? '#A47864' }"
             >
               {{ auth.user?.initials ?? '—' }}
             </span>

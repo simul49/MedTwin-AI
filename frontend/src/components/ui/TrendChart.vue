@@ -5,7 +5,7 @@ type Kind = 'bars' | 'line' | 'wave';
 
 const props = withDefaults(
   defineProps<{ values: number[]; kind?: Kind; height?: number; color?: string; labels?: string[] }>(),
-  { kind: 'line', height: 130, color: '#0e9180' },
+  { kind: 'line', height: 130, color: '#101585' },
 );
 
 const W = 400;
@@ -51,7 +51,7 @@ const barWidth = computed(() => Math.max(6, (W - 24) / Math.max(1, data.value.le
         :width="barWidth"
         :height="H - 12 - p.y"
         rx="4"
-        :fill="i % 3 === 0 ? '#35bda7' : color"
+        :fill="i % 3 === 0 ? '#A78BFA' : color"
         opacity="0.9"
       />
     </template>

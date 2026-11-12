@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
   <div>
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-teal-500 text-white shadow-lift">
+        <div class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-700 to-lavender text-white shadow-lift">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
           </svg>
@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
           <div ref="scroller" class="dash-scroll flex-1 space-y-4 overflow-y-auto bg-surface-50/60 px-5 py-5">
             <!-- Welcome -->
             <div v-if="!turns.length" class="flex h-full flex-col items-center justify-center py-6 text-center">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-teal-500 text-white shadow-lift">
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-700 to-lavender text-white shadow-lift">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
                   <path d="M4 5h16v11H9l-5 4zM8 10h8M8 13h5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -208,7 +208,7 @@ onBeforeUnmount(() => {
               <div class="flex gap-3" :class="turn.role === 'user' ? 'justify-end' : 'justify-start'">
                 <div
                   v-if="turn.role === 'ai'"
-                  class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-teal-500 text-white"
+                  class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-700 to-lavender text-white"
                 >
                   <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
 
             <!-- Thinking indicator -->
             <div v-if="sending" class="flex gap-3">
-              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-teal-500 text-white">
+              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-700 to-lavender text-white">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
                 </svg>

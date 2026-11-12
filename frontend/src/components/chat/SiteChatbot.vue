@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
           aria-label="MedTwin website chatbot"
         >
           <!-- Header -->
-          <header class="relative bg-gradient-to-r from-brand-700 via-brand-600 to-teal-500 px-4 py-3.5 text-white">
+          <header class="relative bg-gradient-to-r from-brand-900 via-brand-700 to-brand-500 px-4 py-3.5 text-white">
             <div class="flex items-center gap-3">
               <div class="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur">
                 <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
             <!-- Welcome + suggestions -->
             <div v-if="messages.length <= 1 && suggestions.length" class="pt-2">
               <div class="flex flex-col items-center text-center">
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-teal-500 text-white shadow-lift">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-700 to-lavender text-white shadow-lift">
                   <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
                   </svg>
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
               <div v-if="index > 0 || messages.length > 1" class="flex gap-2.5" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
                 <div
                   v-if="msg.role === 'ai'"
-                  class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-teal-500 text-white"
+                  class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-700 to-lavender text-white"
                 >
                   <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
@@ -269,7 +269,7 @@ onBeforeUnmount(() => {
 
             <!-- Thinking indicator -->
             <div v-if="sending && (messages.length === 0 || messages[messages.length - 1].role === 'user')" class="flex gap-2.5">
-              <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-teal-500 text-white">
+              <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-700 to-lavender text-white">
                 <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3z" stroke-linejoin="round" />
                 </svg>
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
       </Transition>
 
       <button
-        class="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-teal-500 text-white shadow-lift transition-transform hover:scale-105 active:scale-95"
+        class="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-700 to-lavender text-white shadow-lift transition-transform hover:scale-105 active:scale-95"
         aria-label="Open chat"
         @click="toggle"
       >

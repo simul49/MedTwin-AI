@@ -96,7 +96,7 @@ onMounted(load);
     <!-- Header -->
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-teal-500 text-white shadow-lift">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 text-white shadow-lift">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 4v16M4 12h16" stroke-linecap="round" />
           </svg>
@@ -295,7 +295,7 @@ onMounted(load);
             </div>
           </div>
           <div class="mt-4 h-[110px]">
-            <TrendChart :values="timelineValues" kind="line" :height="110" color="#35bda7" />
+            <TrendChart :values="timelineValues" kind="line" :height="110" color="#E2725B" />
           </div>
           <p class="mt-2 text-[11px] text-ink-400">{{ timeline.length }} timeline events</p>
         </div>

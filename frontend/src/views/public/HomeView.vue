@@ -76,7 +76,7 @@ const stats = [
       <div aria-hidden="true" class="pointer-events-none absolute inset-0">
         <div class="bg-mesh absolute inset-0" />
         <div class="animate-float-slow absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand-200/40 blur-3xl" />
-        <div class="animate-float-slower absolute -right-16 top-32 h-80 w-80 rounded-full bg-teal-100/60 blur-3xl" />
+        <div class="animate-float-slower absolute -right-16 top-32 h-80 w-80 rounded-full bg-lavender-light/50 blur-3xl" />
       </div>
 
       <div class="container-page relative grid items-center gap-12 py-16 lg:grid-cols-2 lg:py-24">
@@ -180,7 +180,7 @@ const stats = [
       />
       <div class="container-page relative grid items-center gap-10 lg:grid-cols-2">
         <div v-reveal>
-          <span class="chip bg-white/10 text-teal-100 ring-1 ring-inset ring-white/15">TRUST, MEASURED</span>
+          <span class="chip bg-white/10 text-brand-100 ring-1 ring-inset ring-white/15">TRUST, MEASURED</span>
           <h2 class="mt-4 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
             Every answer carries its evidence
           </h2>
@@ -201,7 +201,7 @@ const stats = [
           <div v-for="(metric, index) in metrics" :key="metric.label" v-reveal="index + 2">
             <p class="stat-number">{{ metric.value }}</p>
             <p class="mt-1 text-sm text-brand-100/75">{{ metric.label }}</p>
-            <span class="mt-3 block h-0.5 w-12 rounded-full bg-teal-400" />
+            <span class="mt-3 block h-0.5 w-12 rounded-full bg-terracotta" />
           </div>
         </div>
       </div>
@@ -229,8 +229,8 @@ const stats = [
           </p>
           <ul class="mt-6 space-y-3">
             <li v-for="point in extractionPoints" :key="point" class="flex gap-3 text-sm text-ink-700">
-              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100">
-                <svg class="h-3 w-3 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100">
+                <svg class="h-3 w-3 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
                   <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </span>
