@@ -3,8 +3,7 @@ import { computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { patient, connect } from '@/api/endpoints';
 import { useAsync, formatDateTime } from '@/composables/useAsync';
-import TrendChart from '@/components/ui/TrendChart.vue';
-import bodyMap from '@/assets/body-map.png';
+import heroDigitalTwin from '@/assets/hero-digital-twin.png';
 import type { Observation } from '@/api/types';
 
 const auth = useAuthStore();
@@ -45,12 +44,26 @@ interface Vital {
 function sparkFor(value: number, level = 1): number[] {
   const base = Math.min(1, Math.abs(value) / 100) || 0.5;
   const out: number[] = [];
-  for (let i = 0; i < 16; i += 1) {
-    const wave = 0.55 + 0.3 * Math.sin((i / 16) * Math.PI * 2 * level + base * 6);
+  for (let i = 0; i < 18; i += 1) {
+    const wave = 0.55 + 0.3 * Math.sin((i / 18) * Math.PI * 2 * level + base * 6);
     out.push(Math.max(0.15, wave * base + 0.12) * 100);
   }
   return out;
 }
+
+/** SVG polyline points for a vital sparkline (viewBox 100 x 32). */
+function sparklinePoints(values: number[]): string {
+  const n = values.length;
+  return values.map((v, i) => `${((i / (n - 1)) * 100).toFixed(1)},${(30 - (v / 100) * 25).toFixed(1)}`).join(' ');
+}
+
+/** Area path underneath the sparkline for a soft gradient fill. */
+function sparklineArea(values: number[]): string {
+  return `M0,32 L${sparklinePoints(values).replace(/ /g, ' L')} L100,32 Z`;
+}
+
+const sparkColor = (flag: string) =>
+  flag === 'HIGH' || flag === 'CRITICAL' ? '#E2725B' : flag === 'LOW' ? '#7C5FE8' : '#101585';
 
 function vitalFrom(obs: Observation | undefined, fallback: string, partial: Omit<Vital, 'display' | 'flag'>): Vital {
   let display = obs?.displayValue || fallback;
@@ -75,31 +88,31 @@ const vitals = computed<Vital[]>(() => {
   const list: Vital[] = [
     vitalFrom(heart, '72', {
       key: 'heart', label: 'Heart Rate', unit: 'bpm', note: 'Resting pulse',
-      spark: sparkFor(heart?.value ?? 72, 3), annotationStyle: 'left-[8%] top-[30%]',
+      spark: sparkFor(heart?.value ?? 72, 3), annotationStyle: 'left-[3%] top-[14%]',
     }),
     vitalFrom(bp, '132', {
       key: 'bp', label: 'Blood Pressure', unit: bp?.unit || 'mmHg', note: 'Systolic reading',
-      spark: sparkFor(bp?.value ?? 132, 2), annotationStyle: 'left-[55%] top-[14%]',
+      spark: sparkFor(bp?.value ?? 132, 2), annotationStyle: 'right-[3%] top-[24%]',
     }),
     vitalFrom(spo2, '97', {
       key: 'spo2', label: 'SpO₂', unit: '%', note: 'Oxygen saturation',
-      spark: sparkFor(spo2?.value ?? 97, 1.4), annotationStyle: 'left-[46%] top-[62%]',
+      spark: sparkFor(spo2?.value ?? 97, 1.4), annotationStyle: 'left-[5%] top-[48%]',
     }),
     vitalFrom(glucose, '7.1', {
       key: 'glucose', label: 'Blood Glucose', unit: glucose?.unit || 'mmol/L', note: 'Latest panel',
-      spark: sparkFor(glucose?.value ?? 7.1, 2.2), annotationStyle: 'left-[10%] top-[74%]',
+      spark: sparkFor(glucose?.value ?? 7.1, 2.2), annotationStyle: 'right-[5%] top-[62%]',
     }),
   ];
   if (hrv) {
     list.push(vitalFrom(hrv, '46', {
       key: 'hrv', label: 'HRV', unit: hrv.unit || 'ms', note: 'Autonomic balance',
-      spark: sparkFor(hrv.value ?? 46, 2.6), annotationStyle: 'left-[64%] top-[48%]',
+      spark: sparkFor(hrv.value ?? 46, 2.6), annotationStyle: 'left-[7%] top-[76%]',
     }));
   }
   return list;
 });
 
-const vitalsNoBp = computed(() => vitals.value.filter((v) => v.key !== 'bp'));
+const annotatedVitals = computed(() => vitals.value.slice(0, 4));
 
 /** Flagged observations become twin insight cards, worst first. */
 const severityOf = (flag: string) =>
@@ -206,10 +219,33 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
               >{{ vital.display }}</span>
               <span class="ml-1 text-[12px] font-medium text-ink-400">{{ vital.unit }}</span>
             </p>
-            <div class="mt-2 h-9">
-              <TrendChart :values="vital.spark" kind="bars" :height="36" color="#101585" />
+            <div class="relative mt-2 h-10">
+              <svg viewBox="0 0 100 32" preserveAspectRatio="none" class="h-full w-full">
+                <defs>
+                  <linearGradient :id="`spark-${vital.key}`" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" :stop-color="sparkColor(vital.flag)" stop-opacity="0.28" />
+                    <stop offset="100%" :stop-color="sparkColor(vital.flag)" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path :d="sparklineArea(vital.spark)" :fill="`url(#spark-${vital.key})`" />
+                <polyline
+                  :points="sparklinePoints(vital.spark)"
+                  fill="none"
+                  :stroke="sparkColor(vital.flag)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  vector-effect="non-scaling-stroke"
+                />
+                <circle
+                  :cx="100"
+                  :cy="30 - (vital.spark[vital.spark.length - 1] / 100) * 25"
+                  r="2.5"
+                  :fill="sparkColor(vital.flag)"
+                />
+              </svg>
             </div>
-            <p class="mt-1.5 text-[10.5px] text-ink-400">{{ vital.note }}</p>
+            <p class="mt-1 text-[10.5px] text-ink-400">{{ vital.note }}</p>
           </div>
         </div>
 
@@ -233,12 +269,13 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
             </div>
 
             <div class="relative flex-1">
-              <img :src="bodyMap" alt="Anatomical map of your Digital Twin" class="absolute inset-0 mx-auto h-full w-full max-w-[520px] object-contain px-2 pb-28 pt-4" />
-              <!-- Floating glass annotations -->
+              <div class="bg-mesh pointer-events-none absolute inset-x-0 top-0 h-2/5 opacity-60" />
+              <img :src="heroDigitalTwin" alt="Your Digital Twin — a human figure formed by connected health data points" class="absolute inset-0 mx-auto h-full w-full max-w-[420px] object-contain px-4 pb-28 pt-2" />
+              <!-- Floating glass annotations with pulse anchors -->
               <div
-                v-for="(vital, i) in vitalsNoBp"
+                v-for="(vital, i) in annotatedVitals"
                 :key="vital.key"
-                class="absolute w-[178px] rounded-2xl border border-white/70 bg-white/75 px-3.5 py-2.5 shadow-card backdrop-blur-md transition-transform duration-300 hover:scale-[1.03]"
+                class="absolute w-[176px] rounded-2xl border border-white/70 bg-white/80 px-3.5 py-2.5 shadow-card backdrop-blur-md transition-transform duration-300 hover:scale-[1.04]"
                 :class="vital.annotationStyle"
                 :style="{ animation: `fade-up 0.5s ease-out ${0.15 * i + 0.2}s both` }"
               >
@@ -246,7 +283,10 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
                 <p class="mt-0.5 text-[15px] font-extrabold text-ink-900">
                   {{ vital.display }} <span class="text-[11px] font-medium text-ink-400">{{ vital.unit }}</span>
                 </p>
-                <span class="absolute -bottom-1.5 left-6 h-3 w-3 rounded-full border-2 border-white bg-brand-500 shadow" />
+                <span class="absolute -bottom-2 left-7 flex h-4 w-4 items-center justify-center">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full opacity-40" :class="vital.flag === 'HIGH' || vital.flag === 'CRITICAL' ? 'bg-terracotta' : 'bg-brand-500'" />
+                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-white" :class="vital.flag === 'HIGH' || vital.flag === 'CRITICAL' ? 'bg-terracotta' : 'bg-brand-500'" />
+                </span>
               </div>
 
               <!-- Summary report glass card -->
