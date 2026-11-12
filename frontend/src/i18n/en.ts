@@ -25,10 +25,17 @@ export default {
   chatbot: {
     title: 'MedTwin Assistant',
     subtitle: 'General health info · not medical advice',
+    greeting: 'How can I help your health today?',
+    welcomeShort: 'Ask anything about health — answers come from our reviewed medical library with sources.',
     welcome:
       'Hi! I can answer general health questions using our reviewed medical library. For anything personal, sign in to the patient portal so I can use your Digital Twin.',
     placeholder: 'Ask a health question…',
     thinking: 'Checking sources…',
+    sources: '{n} source | {n} sources',
+    s1: 'What is high blood pressure?',
+    s2: 'How can I lower my cholesterol?',
+    s3: 'What does an HbA1c test show?',
+    s4: 'Tips for managing type 2 diabetes',
     disclaimer:
       'The assistant never diagnoses or prescribes. In an emergency, contact your local emergency services.',
     error: 'Sorry — something went wrong. Please try again.',
