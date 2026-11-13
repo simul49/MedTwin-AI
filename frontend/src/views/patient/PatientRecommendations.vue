@@ -108,6 +108,13 @@ function basisText(item: Recommendation): string {
   return parts.join(' · ');
 }
 
+/** Uniform footer for cards without a data-derived basis. */
+function footerNote(type: string): string {
+  if (type === 'LIFESTYLE') return 'General wellbeing guidance — applies to everyone.';
+  if (type === 'FOLLOW_UP') return 'Based on your active medication list.';
+  return 'Derived from your Digital Twin records.';
+}
+
 async function copyItem(item: Recommendation) {
   try {
     await navigator.clipboard.writeText(`${item.title}\n\n${item.body}`);
@@ -246,11 +253,11 @@ onMounted(load);
               </div>
               <p class="mt-1.5 flex-1 text-[13px] leading-relaxed text-ink-600">{{ item.body }}</p>
 
-              <p v-if="basisText(item)" class="mt-2.5 flex items-start gap-1.5 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-400">
+              <p class="mt-2.5 flex items-start gap-1.5 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-400">
                 <svg class="mt-0.5 h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M12 8v5m0 3v.5M12 3a9 9 0 100 18 9 9 0 000-18z" stroke-linecap="round" />
                 </svg>
-                {{ basisText(item) }}
+                {{ basisText(item) || footerNote(item.type) }}
               </p>
 
               <div class="mt-3 flex flex-wrap items-center gap-2">
