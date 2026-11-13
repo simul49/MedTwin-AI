@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ai } from '@/api/endpoints';
 import type { ChatResponse } from '@/api/types';
 
@@ -144,6 +145,18 @@ function onKeydown(event: KeyboardEvent) {
     send();
   }
 }
+
+// Pre-fill the composer when arriving from another page (e.g. a recommendation card).
+const route = useRoute();
+const router = useRouter();
+onMounted(() => {
+  const prefill = typeof route.query.q === 'string' ? route.query.q.trim() : '';
+  if (prefill) {
+    draft.value = prefill;
+    nextTick(() => textareaEl.value?.focus());
+    router.replace({ query: { ...route.query, q: undefined } });
+  }
+});
 
 onBeforeUnmount(() => {
   if (typewriter) clearInterval(typewriter);
