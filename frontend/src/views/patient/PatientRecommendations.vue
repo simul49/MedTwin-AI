@@ -224,7 +224,8 @@ onMounted(load);
             <span class="ml-auto chip bg-surface-100 text-ink-500">{{ group.length }}</span>
           </div>
 
-          <div class="grid gap-4" :class="group.length > 1 ? 'lg:grid-cols-2' : ''">
+          <!-- Clinician questions get a full-width row each; other groups use two columns -->
+          <div class="grid gap-4" :class="type !== 'QUESTION_TO_ASK' && group.length > 1 ? 'lg:grid-cols-2' : ''">
             <article
               v-for="item in group"
               :key="item.id"
