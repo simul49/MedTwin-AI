@@ -23,9 +23,14 @@ const activeConversation = ref<string | null>(null);
 let typewriter: ReturnType<typeof setInterval> | null = null;
 
 const SUGGESTIONS = [
-  'What do my recent blood pressure readings mean?',
+  'What do my BP readings mean?',
   'Explain my HbA1c result',
-  'How should I prepare for my next appointment?',
+  'Is my heart rate normal?',
+  'My health trends this month',
+  'Records needing verification?',
+  'Questions for my doctor?',
+  'Tips for better sleep & energy',
+  'My medications in simple terms',
 ];
 const suggestions = ref<string[]>([...SUGGESTIONS]);
 
@@ -201,15 +206,15 @@ onBeforeUnmount(() => {
               <p class="mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-ink-500">
                 Every answer is grounded in your records and approved sources, with a visible trust rating.
               </p>
-              <div class="mt-5 grid w-full max-w-md gap-2">
+              <div class="mt-5 grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   v-for="suggestion in suggestions"
                   :key="suggestion"
-                  class="group flex items-center justify-between rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-left text-[13px] text-ink-700 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card"
+                  class="group flex items-center justify-between gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 text-left text-[12px] text-ink-700 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card"
                   @click="send(suggestion)"
                 >
                   {{ suggestion }}
-                  <svg viewBox="0 0 20 20" class="h-3.5 w-3.5 shrink-0 text-ink-300 transition-colors group-hover:text-brand-500" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg viewBox="0 0 20 20" class="h-3 w-3 shrink-0 text-ink-300 transition-colors group-hover:text-brand-500" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </button>
