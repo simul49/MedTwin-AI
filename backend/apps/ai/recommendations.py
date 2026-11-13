@@ -38,6 +38,41 @@ EDUCATION_TOPICS = {
             "which number is the target for you personally."
         ),
     },
+    "Anaemia": {
+        "title": "Why haemoglobin matters",
+        "body": (
+            "Haemoglobin carries oxygen through your body. Low levels often show up as "
+            "tiredness or shortness of breath — worth tracking alongside your iron panel."
+        ),
+    },
+    "Hypothyroidism": {
+        "title": "Understanding thyroid results",
+        "body": (
+            "TSH, T3 and T4 tell different parts of the thyroid story. Bring all three to "
+            "your review so trends can be compared over time."
+        ),
+    },
+    "Chronic kidney disease": {
+        "title": "Protecting kidney health",
+        "body": (
+            "Creatinine and eGFR estimates track how well kidneys filter. Staying hydrated "
+            "and reviewing blood-pressure control both help."
+        ),
+    },
+    "Obesity": {
+        "title": "Small steps for sustainable change",
+        "body": (
+            "Modest, consistent changes — regular meal timing, daily movement and sleep — "
+            "usually beat short intensive efforts for long-term results."
+        ),
+    },
+    "Anxiety": {
+        "title": "Managing anxious moments",
+        "body": (
+            "Breathing exercises, regular sleep and noting triggers are evidence-informed "
+            "first steps. Your clinician can suggest structured options if needed."
+        ),
+    },
 }
 
 
@@ -73,7 +108,7 @@ def refresh_for_patient(user) -> List[Recommendation]:
                 )
             )
 
-    flagged = user.observations.exclude(flag__in=["NORMAL", "UNKNOWN"]).order_by("-observed_at")[:3]
+    flagged = user.observations.exclude(flag__in=["NORMAL", "UNKNOWN"]).order_by("-observed_at")[:5]
     for observation in flagged:
         created.append(
             _ensure(
@@ -87,6 +122,56 @@ def refresh_for_patient(user) -> List[Recommendation]:
                 basis={"observationId": observation.id, "flag": observation.flag},
             )
         )
+        created.append(
+            _ensure(
+                user,
+                type="QUESTION_TO_ASK",
+                title=f"What target should you aim for with {observation.label}?",
+                body=(
+                    f"Your latest {observation.label} is flagged {observation.flag.lower()}. Ask "
+                    "your clinician which target range suits you, what follow-up test to expect, "
+                    "and which lifestyle steps would move it in the right direction."
+                ),
+                basis={"observationId": observation.id, "flag": observation.flag},
+            )
+        )
+
+    created.append(
+        _ensure(
+            user,
+            type="LIFESTYLE",
+            title="Build a home-measurement habit",
+            body=(
+                "Measure at the same time of day, seated and rested. Consistent conditions "
+                "make every trend in your Digital Twin far more meaningful."
+            ),
+            basis={},
+        )
+    )
+    created.append(
+        _ensure(
+            user,
+            type="LIFESTYLE",
+            title="Add a short daily walk",
+            body=(
+                "Ten to twenty minutes of walking most days supports blood pressure, glucose "
+                "control and sleep quality. Start small and keep it regular."
+            ),
+            basis={},
+        )
+    )
+    created.append(
+        _ensure(
+            user,
+            type="LIFESTYLE",
+            title="Keep a steady sleep window",
+            body=(
+                "Going to bed and waking at similar times helps blood pressure, appetite and "
+                "mood regulation. Aim for a consistent window rather than total hours alone."
+            ),
+            basis={},
+        )
+    )
 
     active_meds = user.medications.filter(status="ACTIVE")[:5]
     if active_meds:
