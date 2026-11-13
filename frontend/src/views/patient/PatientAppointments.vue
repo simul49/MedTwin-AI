@@ -16,6 +16,7 @@ const form = ref({ doctorId: '', scheduledAt: '', reason: '' });
 const saving = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const success = ref(false);
 
 const counts = computed(() => ({
   upcoming: appointments.value.filter((a) => ['REQUESTED', 'CONFIRMED'].includes(a.status)).length,
@@ -23,9 +24,39 @@ const counts = computed(() => ({
   cancelled: appointments.value.filter((a) => ['CANCELLED', 'DECLINED'].includes(a.status)).length,
 }));
 
-const sorted = computed(() =>
-  [...appointments.value].sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? '')),
-);
+const UPCOMING = ['REQUESTED', 'CONFIRMED'];
+
+/** Soonest upcoming first, then most recent past visits. */
+const sorted = computed(() => {
+  const upcoming = appointments.value
+    .filter((a) => UPCOMING.includes(a.status))
+    .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
+  const past = appointments.value
+    .filter((a) => !UPCOMING.includes(a.status))
+    .sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''));
+  return [...upcoming, ...past];
+});
+
+const nextAppointment = computed(() => sorted.value.find((a) => UPCOMING.includes(a.status)) ?? null);
+
+function tileClass(status: string): string {
+  if (status === 'CONFIRMED') return 'border-brand-200 bg-brand-50 text-brand-700';
+  if (status === 'REQUESTED') return 'border-lavender-light bg-lavender-light/50 text-lavender-dark';
+  if (status === 'COMPLETED') return 'border-ink-200 bg-surface-100 text-ink-600';
+  return 'border-rose-200 bg-rose-50 text-rose-500';
+}
+
+/** "Today", "Tomorrow", "In 12 days", "8 days ago" — empty beyond that. */
+function relativeLabel(value: string | null): string {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const days = Math.round((date.getTime() - Date.now()) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days > 1 && days <= 30) return `In ${days} days`;
+  if (days < 0 && days >= -30) return `${Math.abs(days)} days ago`;
+  return '';
+}
 
 function calendarParts(value: string | null) {
   const date = value ? new Date(value) : null;
@@ -53,6 +84,7 @@ async function create() {
   if (!form.value.doctorId || !form.value.scheduledAt) return;
   saving.value = true;
   error.value = null;
+  success.value = false;
   try {
     await connect.createAppointment({
       doctorId: form.value.doctorId,
@@ -60,6 +92,8 @@ async function create() {
       reason: form.value.reason,
     });
     form.value = { doctorId: '', scheduledAt: '', reason: '' };
+    success.value = true;
+    setTimeout(() => (success.value = false), 5000);
     await load();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -93,9 +127,9 @@ onMounted(load);
     <!-- Summary strip -->
     <div class="mb-5 grid gap-4 sm:grid-cols-3">
       <div v-for="stat in [
-        { label: 'Upcoming', value: counts.upcoming, tone: 'bg-brand-50 text-brand-700' },
-        { label: 'Completed', value: counts.completed, tone: 'bg-emerald-50 text-emerald-700' },
-        { label: 'Cancelled', value: counts.cancelled, tone: 'bg-surface-100 text-ink-600' },
+        { label: 'Upcoming', value: counts.upcoming, tone: 'bg-brand-50 text-brand-700', icon: 'M7 2v3M17 2v3M3 8h18M4 5h16v16H4z' },
+        { label: 'Completed', value: counts.completed, tone: 'bg-lavender-light/50 text-lavender-dark', icon: 'M4 5h16v11H9l-5 4zM9 10l2 2 4-4' },
+        { label: 'Cancelled', value: counts.cancelled, tone: 'bg-surface-100 text-ink-600', icon: 'M6 6l12 12M18 6L6 18' },
       ]" :key="stat.label" class="dash-card flex items-center justify-between px-5 py-4">
         <div>
           <p class="dash-label">{{ stat.label }}</p>
@@ -103,7 +137,7 @@ onMounted(load);
         </div>
         <span class="dash-icon-tile" :class="stat.tone">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M7 2v3M17 2v3M3 8h18M4 5h16v16H4z" stroke-linecap="round" stroke-linejoin="round" />
+            <path :d="stat.icon" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </span>
       </div>
@@ -124,20 +158,34 @@ onMounted(load);
           </div>
         </div>
 
-        <div v-if="loading" class="h-40 animate-pulse bg-ink-100" />
+        <div v-if="loading" class="shimmer h-40 animate-pulse bg-ink-100" />
         <div v-else-if="!sorted.length" class="px-5 py-12 text-center">
           <p class="text-[14px] font-semibold text-ink-700">No appointments yet</p>
           <p class="mt-1 text-[12px] text-ink-400">Use the form to request your first visit.</p>
         </div>
         <ul v-else class="divide-y divide-ink-100">
-          <li v-for="appointment in sorted" :key="appointment.id" class="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-50/70">
-            <div class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-brand-100 bg-brand-50 leading-none">
-              <span class="text-[17px] font-extrabold text-brand-700">{{ calendarParts(appointment.scheduledAt).day }}</span>
-              <span class="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-600">{{ calendarParts(appointment.scheduledAt).month }}</span>
+          <li
+            v-for="appointment in sorted"
+            :key="appointment.id"
+            class="flex flex-wrap items-center gap-4 px-5 py-3.5 transition-colors hover:bg-surface-50/70"
+            :class="appointment.id === nextAppointment?.id ? 'bg-brand-50/40' : ''"
+          >
+            <div class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border leading-none" :class="tileClass(appointment.status)">
+              <span class="text-[17px] font-extrabold">{{ calendarParts(appointment.scheduledAt).day }}</span>
+              <span class="mt-0.5 text-[10px] font-bold uppercase tracking-wide">{{ calendarParts(appointment.scheduledAt).month }}</span>
             </div>
             <div class="min-w-[160px] flex-1">
-              <p class="text-[14px] font-semibold text-ink-900">{{ appointment.doctorName || 'Clinician' }}</p>
-              <p class="mt-0.5 text-[12px] text-ink-500">{{ formatDateTime(appointment.scheduledAt, ui.locale) }}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="text-[14px] font-semibold text-ink-900">{{ appointment.doctorName || 'Clinician' }}</p>
+                <span
+                  v-if="appointment.id === nextAppointment?.id"
+                  class="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                >Next visit</span>
+              </div>
+              <p class="mt-0.5 text-[12px] text-ink-500">
+                {{ formatDateTime(appointment.scheduledAt, ui.locale) }}
+                <span v-if="relativeLabel(appointment.scheduledAt)" class="font-semibold text-brand-700">· {{ relativeLabel(appointment.scheduledAt) }}</span>
+              </p>
               <p v-if="appointment.reason" class="mt-1 text-[12px] text-ink-400">{{ appointment.reason }}</p>
             </div>
             <div class="flex shrink-0 items-center gap-2">
@@ -147,7 +195,7 @@ onMounted(load);
                 class="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
                 @click="cancel(appointment)"
               >
-                Cancel appointment
+                Cancel
               </button>
             </div>
           </li>
@@ -188,6 +236,12 @@ onMounted(load);
             {{ saving ? 'Sending request…' : t('patient.requestAppointment') }}
           </button>
         </form>
+        <div v-if="success" class="mt-3 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[12px] font-semibold text-brand-700">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Request sent — your clinician will confirm shortly.
+        </div>
         <div class="dash-info mt-4">Requests stay pending until the clinician confirms them.</div>
       </div>
     </div>
