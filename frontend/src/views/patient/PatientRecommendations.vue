@@ -151,16 +151,16 @@ onMounted(load);
 
 <template>
   <div>
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="dash-kicker mb-2">Personalised guidance</p>
-        <h1 class="text-[28px] font-bold leading-tight tracking-tight text-ink-900">{{ t('patient.recommendationsTitle') }}</h1>
-        <p class="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-500">{{ t('patient.recommendationsHint') }}</p>
+        <p class="dash-kicker mb-1.5">Personalised guidance</p>
+        <h1 class="text-[26px] font-bold leading-tight tracking-tight text-ink-900">{{ t('patient.recommendationsTitle') }}</h1>
+        <p class="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink-500">{{ t('patient.recommendationsHint') }}</p>
       </div>
       <span class="chip border border-ink-200 bg-white text-ink-600">{{ items.length }} suggestions</span>
     </div>
 
-    <div class="dash-info mb-5">
+    <div class="dash-info mb-4">
       These are educational prompts derived from your own records — not medical advice. Keep what is useful and dismiss anything that does not apply.
     </div>
 
@@ -180,16 +180,16 @@ onMounted(load);
 
     <template v-else>
       <!-- Progress strip -->
-      <div v-if="totalLoaded" class="dash-card mb-6 px-5 py-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <div v-if="totalLoaded" class="dash-card mb-5 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
           <div class="flex items-center gap-2.5">
-            <span class="dash-icon-tile">
+            <span class="dash-icon-tile h-9 w-9">
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M4 19V9m6 10V5m6 14v-7" stroke-linecap="round" />
               </svg>
             </span>
             <div>
-              <p class="text-[13px] font-bold text-ink-900">Your review progress</p>
+              <p class="text-[12.5px] font-bold text-ink-900">Your review progress</p>
               <p class="text-[11px] text-ink-400">{{ handled }} of {{ totalLoaded }} suggestions handled this visit</p>
             </div>
           </div>
@@ -199,20 +199,20 @@ onMounted(load);
             <span class="flex items-center gap-1.5 text-ink-400"><span class="h-2 w-2 rounded-full bg-ink-300" /> {{ dismissed }} dismissed</span>
           </div>
         </div>
-        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-100">
+        <div class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-100">
           <div class="h-full rounded-full bg-gradient-to-r from-brand-600 to-lavender transition-all duration-500" :style="{ width: `${Math.max(progressPct, 3)}%` }" />
         </div>
       </div>
 
-      <div v-if="!items.length" class="dash-card mb-6 px-5 py-10 text-center">
+      <div v-if="!items.length" class="dash-card mb-5 px-4 py-8 text-center">
         <p class="text-[14px] font-semibold text-ink-800">All caught up 🎉</p>
         <p class="mt-1 text-[12px] text-ink-400">You reviewed every suggestion from this visit. New ones appear as your records grow.</p>
       </div>
 
-      <div class="space-y-6">
+      <div class="space-y-5">
         <section v-for="[type, group] in grouped" :key="type">
-          <div class="mb-3 flex items-center gap-3">
-            <span class="dash-icon-tile" :class="meta(type).tone">
+          <div class="mb-2.5 flex items-center gap-2.5">
+            <span class="dash-icon-tile h-9 w-9" :class="meta(type).tone">
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path :d="meta(type).icon" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
@@ -225,15 +225,15 @@ onMounted(load);
           </div>
 
           <!-- One full-width card per row everywhere -->
-          <div class="grid gap-4">
+          <div class="grid gap-3">
             <article
               v-for="item in group"
               :key="item.id"
-              class="dash-card flex flex-col p-5"
+              class="dash-card flex flex-col p-4"
               :class="priority(item) === 'FOCUS' ? 'border-terracotta/40' : ''"
             >
               <div class="flex items-start justify-between gap-3">
-                <h3 class="text-[15px] font-bold leading-snug text-ink-900">{{ item.title }}</h3>
+                <h3 class="text-[14px] font-bold leading-snug text-ink-900">{{ item.title }}</h3>
                 <span
                   v-if="priority(item)"
                   class="chip shrink-0 font-semibold"
@@ -244,31 +244,31 @@ onMounted(load);
                 </span>
                 <span v-else class="chip shrink-0" :class="meta(type).tone">{{ meta(type).title.split(' ')[0] }}</span>
               </div>
-              <p class="mt-2 flex-1 text-[13px] leading-relaxed text-ink-600">{{ item.body }}</p>
+              <p class="mt-1.5 flex-1 text-[13px] leading-relaxed text-ink-600">{{ item.body }}</p>
 
-              <p v-if="basisText(item)" class="mt-3 flex items-start gap-1.5 border-t border-ink-100 pt-3 text-[11px] leading-relaxed text-ink-400">
+              <p v-if="basisText(item)" class="mt-2.5 flex items-start gap-1.5 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-400">
                 <svg class="mt-0.5 h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M12 8v5m0 3v.5M12 3a9 9 0 100 18 9 9 0 000-18z" stroke-linecap="round" />
                 </svg>
                 {{ basisText(item) }}
               </p>
 
-              <div class="mt-4 flex flex-wrap items-center gap-2">
-                <RouterLink v-if="actionFor(item)" :to="actionFor(item)!.to" class="dash-btn px-3.5 py-2 text-xs">
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <RouterLink v-if="actionFor(item)" :to="actionFor(item)!.to" class="dash-btn px-3 py-1.5 text-xs">
                   {{ actionFor(item)!.label }} →
                 </RouterLink>
                 <button
-                  class="btn-secondary px-3.5 py-2 text-xs"
+                  class="btn-secondary px-3 py-1.5 text-xs"
                   :disabled="busy === item.id"
                   @click="respond(item, 'ACCEPTED')"
                 >Keep</button>
                 <button
-                  class="btn-ghost px-3 py-2 text-xs"
+                  class="btn-ghost px-2.5 py-1.5 text-xs"
                   :disabled="busy === item.id"
                   @click="respond(item, 'DISMISSED')"
                 >Dismiss</button>
                 <button
-                  class="ml-auto rounded-lg px-2.5 py-2 text-[11px] font-semibold text-ink-400 transition-colors hover:bg-surface-100 hover:text-brand-700"
+                  class="ml-auto rounded-lg px-2 py-1.5 text-[11px] font-semibold text-ink-400 transition-colors hover:bg-surface-100 hover:text-brand-700"
                   @click="copyItem(item)"
                 >{{ copiedId === item.id ? '✓ Copied' : 'Copy' }}</button>
               </div>
