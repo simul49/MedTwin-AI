@@ -143,8 +143,53 @@ onMounted(load);
       </div>
     </div>
 
-    <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-      <!-- Appointment list -->
+    <div class="space-y-5">
+      <!-- Request form (first row, full width) -->
+      <div class="dash-card dash-card-pad">
+        <div class="flex items-start gap-3">
+          <span class="dash-icon-tile">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+          </span>
+          <div>
+            <p class="dash-section-title">{{ t('patient.requestAppointment') }}</p>
+            <p class="dash-section-sub mt-0.5">Choose a clinician and a preferred time</p>
+          </div>
+        </div>
+
+        <form class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="create">
+          <div>
+            <label class="label" for="a-doctor">Select a professional</label>
+            <select id="a-doctor" v-model="form.doctorId" class="input" required>
+              <option value="">Choose a clinician</option>
+              <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">{{ doctor.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label" for="a-when">Date &amp; time</label>
+            <input id="a-when" v-model="form.scheduledAt" class="input" type="datetime-local" required />
+          </div>
+          <div class="md:col-span-2">
+            <label class="label" for="a-reason">Reason for visit</label>
+            <textarea id="a-reason" v-model="form.reason" class="input min-h-20" placeholder="Briefly describe what you would like to discuss" />
+          </div>
+          <div class="flex flex-wrap items-center gap-3 md:col-span-2">
+            <button class="dash-btn px-6" type="submit" :disabled="saving">
+              {{ saving ? 'Sending request…' : t('patient.requestAppointment') }}
+            </button>
+            <div v-if="success" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[12px] font-semibold text-brand-700">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Request sent — your clinician will confirm shortly.
+            </div>
+            <p v-else class="text-[11px] text-ink-400">Requests stay pending until the clinician confirms them.</p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Appointment list (second row, full width) -->
       <div class="dash-card overflow-hidden">
         <div class="flex items-start gap-3 border-b border-ink-100 px-5 py-4">
           <span class="dash-icon-tile">
@@ -200,49 +245,6 @@ onMounted(load);
             </div>
           </li>
         </ul>
-      </div>
-
-      <!-- Request form -->
-      <div class="dash-card dash-card-pad">
-        <div class="flex items-start gap-3">
-          <span class="dash-icon-tile">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-            </svg>
-          </span>
-          <div>
-            <p class="dash-section-title">{{ t('patient.requestAppointment') }}</p>
-            <p class="dash-section-sub mt-0.5">Choose a clinician and a preferred time</p>
-          </div>
-        </div>
-
-        <form class="mt-5 space-y-4" @submit.prevent="create">
-          <div>
-            <label class="label" for="a-doctor">Select a professional</label>
-            <select id="a-doctor" v-model="form.doctorId" class="input" required>
-              <option value="">Choose a clinician</option>
-              <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">{{ doctor.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="label" for="a-when">Date &amp; time</label>
-            <input id="a-when" v-model="form.scheduledAt" class="input" type="datetime-local" required />
-          </div>
-          <div>
-            <label class="label" for="a-reason">Reason for visit</label>
-            <textarea id="a-reason" v-model="form.reason" class="input min-h-24" placeholder="Briefly describe what you would like to discuss" />
-          </div>
-          <button class="dash-btn w-full" type="submit" :disabled="saving">
-            {{ saving ? 'Sending request…' : t('patient.requestAppointment') }}
-          </button>
-        </form>
-        <div v-if="success" class="mt-3 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[12px] font-semibold text-brand-700">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          Request sent — your clinician will confirm shortly.
-        </div>
-        <div class="dash-info mt-4">Requests stay pending until the clinician confirms them.</div>
       </div>
     </div>
   </div>
