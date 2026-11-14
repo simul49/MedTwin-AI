@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
@@ -21,9 +21,22 @@ const profile = ref({
 });
 
 const passwords = ref({ current: '', next: '' });
+const showPasswords = ref({ current: false, next: false });
 const message = ref<string | null>(null);
 const error = ref<string | null>(null);
 const savingProfile = ref(false);
+const exporting = ref(false);
+
+const initials = computed(() =>
+  (auth.user?.name ?? '')
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase(),
+);
+
+const passwordValid = computed(() => passwords.value.current.length > 0 && passwords.value.next.length >= 8);
 
 watch(
   () => auth.user,
@@ -74,14 +87,22 @@ async function changePassword() {
 }
 
 async function exportData() {
-  const data = await patient.exportData();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'medtwin-export.json';
-  link.click();
-  URL.revokeObjectURL(url);
+  exporting.value = true;
+  try {
+    const data = await patient.exportData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `medtwin-export-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notify('Export downloaded — a JSON copy of your health data.');
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    exporting.value = false;
+  }
 }
 
 async function deleteData() {
@@ -97,10 +118,21 @@ function pickLocale(code: LocaleCode) {
 
 <template>
   <div>
-    <div class="mb-6">
-      <p class="dash-kicker mb-2">Account &amp; preferences</p>
-      <h1 class="text-[28px] font-bold leading-tight tracking-tight text-ink-900">{{ t('patient.settingsTitle') }}</h1>
-      <p class="mt-2 text-[14px] text-ink-500">Manage your profile, language, security and personal data.</p>
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="dash-kicker mb-1.5">Account &amp; preferences</p>
+        <h1 class="text-[26px] font-bold leading-tight tracking-tight text-ink-900">{{ t('patient.settingsTitle') }}</h1>
+        <p class="mt-1 text-[13px] text-ink-500">Manage your profile, language, security and personal data.</p>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] font-semibold">
+        <span class="chip bg-surface-100 text-ink-600">
+          <svg class="mr-1 inline-block h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M4 6h16v12H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          {{ auth.user?.email }}
+        </span>
+        <span class="chip bg-brand-50 text-brand-700">{{ auth.user?.role?.toLowerCase() ?? 'patient' }}</span>
+      </div>
     </div>
 
     <div v-if="message" class="mb-4 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] font-medium text-brand-800">
@@ -212,25 +244,79 @@ function pickLocale(code: LocaleCode) {
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
                 <label class="label" for="s-current">Current password</label>
-                <input id="s-current" v-model="passwords.current" class="input" type="password" autocomplete="current-password" />
+                <div class="relative">
+                  <input
+                    id="s-current"
+                    v-model="passwords.current"
+                    class="input pr-10"
+                    :type="showPasswords.current ? 'text' : 'password'"
+                    autocomplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 transition-colors hover:text-ink-700"
+                    :aria-label="showPasswords.current ? 'Hide password' : 'Show password'"
+                    @click="showPasswords.current = !showPasswords.current"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                      <template v-if="showPasswords.current">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                        <circle cx="12" cy="12" r="2.5" />
+                        <path d="M4 20 20 4" />
+                      </template>
+                      <template v-else>
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                        <circle cx="12" cy="12" r="2.5" />
+                      </template>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div>
                 <label class="label" for="s-next">New password</label>
-                <input id="s-next" v-model="passwords.next" class="input" type="password" autocomplete="new-password" />
+                <div class="relative">
+                  <input
+                    id="s-next"
+                    v-model="passwords.next"
+                    class="input pr-10"
+                    :type="showPasswords.next ? 'text' : 'password'"
+                    autocomplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 transition-colors hover:text-ink-700"
+                    :aria-label="showPasswords.next ? 'Hide password' : 'Show password'"
+                    @click="showPasswords.next = !showPasswords.next"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                      <template v-if="showPasswords.next">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                        <circle cx="12" cy="12" r="2.5" />
+                        <path d="M4 20 20 4" />
+                      </template>
+                      <template v-else>
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                        <circle cx="12" cy="12" r="2.5" />
+                      </template>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
-            <p class="text-[11px] text-ink-400">{{ t('auth.passwordHint') }}</p>
+            <p class="text-[11px]" :class="passwords.next && passwords.next.length < 8 ? 'font-semibold text-amber-600' : 'text-ink-400'">
+              {{ t('auth.passwordHint') }}
+            </p>
             <div class="flex justify-end border-t border-ink-100 pt-4">
-              <button class="dash-btn" type="submit">Update password</button>
+              <button class="dash-btn" type="submit" :disabled="!passwordValid">Update password</button>
             </div>
           </form>
         </div>
 
-        <div class="dash-card dash-card-pad">
-          <div class="flex items-start gap-3">
-            <span class="dash-icon-tile">
+        <div class="dash-card overflow-hidden border-rose-200">
+          <div class="flex items-start gap-3 border-b border-rose-100 bg-rose-50/60 px-4 py-3.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </span>
             <div>
@@ -238,9 +324,26 @@ function pickLocale(code: LocaleCode) {
               <p class="dash-section-sub mt-0.5">Download or remove your health data</p>
             </div>
           </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button class="btn-secondary text-xs" @click="exportData">{{ t('patient.exportData') }}</button>
-            <button class="btn-danger text-xs" @click="deleteData">{{ t('patient.deleteData') }}</button>
+          <div class="divide-y divide-ink-100">
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-ink-800">{{ t('patient.exportData') }}</p>
+                <p class="mt-0.5 text-[11.5px] text-ink-400">A machine-readable JSON copy of everything stored about you.</p>
+              </div>
+              <button class="btn-secondary shrink-0 px-3 py-1.5 text-xs" :disabled="exporting" @click="exportData">
+                <svg class="mr-1 inline-block h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                {{ exporting ? 'Preparing…' : 'Download' }}
+              </button>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-ink-800">{{ t('patient.deleteData') }}</p>
+                <p class="mt-0.5 text-[11.5px] text-ink-400">Permanently removes your health records. This cannot be undone.</p>
+              </div>
+              <button class="btn-danger shrink-0 px-3 py-1.5 text-xs" @click="deleteData">Delete</button>
+            </div>
           </div>
         </div>
       </div>
