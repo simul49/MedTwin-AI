@@ -99,7 +99,7 @@ onUnmounted(() => {
 
     <p v-if="error" class="dash-card mb-4 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ error }}</p>
 
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)]">
+    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
       <!-- Conversation list -->
       <div class="dash-card overflow-hidden">
         <div class="flex items-center justify-between border-b border-ink-100 bg-surface-50/60 px-4 py-2.5">
@@ -122,22 +122,22 @@ onUnmounted(() => {
         <ul v-else class="divide-y divide-ink-100">
           <li v-for="conversation in conversations" :key="conversation.id">
             <button
-              class="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors"
+              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
               :class="active?.id === conversation.id ? 'bg-brand-50/70' : 'hover:bg-surface-50'"
               @click="select(conversation)"
             >
               <span
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-card"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10.5px] font-bold text-white shadow-card"
                 :style="{ backgroundColor: conversation.counterpart?.avatarColor ?? '#2563eb' }"
               >
                 {{ conversation.counterpart?.initials ?? '—' }}
               </span>
               <span class="min-w-0 flex-1">
                 <span class="flex items-center gap-1.5">
-                  <span class="truncate text-[13.5px] font-semibold text-ink-900">{{ conversation.counterpart?.name ?? conversation.title }}</span>
-                  <span v-if="conversation.unread" class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[10px] font-bold text-white">{{ conversation.unread }}</span>
+                  <span class="truncate text-[12.5px] font-semibold text-ink-900">{{ conversation.counterpart?.name ?? conversation.title }}</span>
+                  <span v-if="conversation.unread" class="ml-auto flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[9.5px] font-bold text-white">{{ conversation.unread }}</span>
                 </span>
-                <span class="mt-0.5 block truncate text-[11.5px] text-ink-400">{{ conversation.lastMessage || 'No messages yet' }}</span>
+                <span class="mt-0.5 block truncate text-[11px] text-ink-400">{{ conversation.lastMessage || 'No messages yet' }}</span>
               </span>
             </button>
           </li>
