@@ -100,16 +100,16 @@ onUnmounted(() => {
     <p v-if="error" class="dash-card mb-4 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ error }}</p>
 
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-      <!-- Conversation list -->
-      <div class="dash-card overflow-hidden">
+      <!-- Conversation list (same height as chat panel) -->
+      <div class="dash-card flex flex-col overflow-hidden lg:h-[32rem]">
         <div class="flex items-center justify-between border-b border-ink-100 bg-surface-50/60 px-4 py-2.5">
           <p class="text-[12px] font-bold uppercase tracking-wide text-ink-500">Conversations</p>
           <span class="chip bg-surface-100 text-[10.5px] text-ink-500">{{ conversations.length }}</span>
         </div>
 
-        <div v-if="loading && !conversations.length" class="shimmer h-48 animate-pulse bg-ink-50" />
+        <div v-if="loading && !conversations.length" class="shimmer flex-1 animate-pulse bg-ink-50" />
 
-        <div v-else-if="!conversations.length" class="px-4 py-12 text-center">
+        <div v-else-if="!conversations.length" class="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
           <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path d="M4 5h16v11H9l-5 4z" stroke-linecap="round" stroke-linejoin="round" />
@@ -119,8 +119,9 @@ onUnmounted(() => {
           <p class="mt-1 text-[11.5px] text-ink-400">Threads appear once your care team starts messaging you.</p>
         </div>
 
-        <ul v-else class="divide-y divide-ink-100">
-          <li v-for="conversation in conversations" :key="conversation.id">
+        <div v-else class="flex-1 overflow-y-auto">
+          <ul class="divide-y divide-ink-100">
+            <li v-for="conversation in conversations" :key="conversation.id">
             <button
               class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
               :class="active?.id === conversation.id ? 'bg-brand-50/70' : 'hover:bg-surface-50'"
@@ -140,8 +141,9 @@ onUnmounted(() => {
                 <span class="mt-0.5 block truncate text-[11px] text-ink-400">{{ conversation.lastMessage || 'No messages yet' }}</span>
               </span>
             </button>
-          </li>
-        </ul>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <!-- Chat panel -->
