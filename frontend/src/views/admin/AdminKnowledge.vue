@@ -92,15 +92,21 @@ onMounted(load);
           <p class="mt-1 text-[12px] text-ink-400">Register the first source to ground the assistant.</p>
         </div>
 
-        <ul v-else class="divide-y divide-ink-100">
-          <li v-for="source in sources" :key="source.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-surface-50/70">
+        <div v-else class="grid gap-3 p-4 sm:grid-cols-2">
+          <div
+            v-for="source in sources"
+            :key="source.id"
+            class="flex flex-col justify-between rounded-xl border border-ink-100 bg-white p-3.5 transition-colors hover:border-brand-200"
+          >
             <div class="min-w-0">
-              <p class="text-[14px] font-semibold text-ink-900">{{ source.title }}</p>
-              <p class="mt-0.5 text-[12px] text-ink-400">{{ source.publisher }} · {{ source.category || 'Uncategorised' }}</p>
-              <span class="mt-1.5 inline-block chip bg-surface-100 text-[10.5px] text-ink-500">{{ source.chunkCount }} chunks</span>
+              <div class="flex items-start justify-between gap-2">
+                <p class="text-[14px] font-semibold leading-snug text-ink-900">{{ source.title }}</p>
+                <StatusBadge :status="source.reviewStatus" />
+              </div>
+              <p class="mt-1 text-[12px] text-ink-400">{{ source.publisher }} · {{ source.category || 'Uncategorised' }}</p>
+              <span class="mt-2 inline-block chip bg-surface-100 text-[10.5px] text-ink-500">{{ source.chunkCount }} chunks</span>
             </div>
-            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <StatusBadge :status="source.reviewStatus" />
+            <div class="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-ink-100 pt-3">
               <select
                 class="input w-32 py-1.5 text-xs"
                 :class="source.reviewStatus === 'APPROVED' ? 'border-brand-300' : ''"
@@ -116,8 +122,8 @@ onMounted(load);
                 @click="remove(source)"
               >Delete</button>
             </div>
-          </li>
-        </ul>
+          </div>
+        </div>
       </div>
 
       <!-- Register form -->
