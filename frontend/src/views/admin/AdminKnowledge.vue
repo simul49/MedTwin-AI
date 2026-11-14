@@ -69,8 +69,52 @@ onMounted(load);
       </div>
     </header>
 
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-      <!-- Source list -->
+    <div class="space-y-4">
+      <!-- Register form (first row, compact full width) -->
+      <div class="dash-card max-w-3xl px-4 py-3.5">
+        <div class="flex items-center gap-2.5">
+          <span class="dash-icon-tile h-9 w-9">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+          </span>
+          <div>
+            <p class="dash-section-title">{{ t('admin.addSource') }}</p>
+            <p class="dash-section-sub mt-0.5">New sources start as pending review</p>
+          </div>
+        </div>
+
+        <form class="mt-3 grid gap-3 md:grid-cols-2" @submit.prevent="create">
+          <div>
+            <label class="label" for="k-title">{{ t('common.details') }}</label>
+            <input id="k-title" v-model="form.title" class="input py-2 text-[13px]" required />
+          </div>
+          <div>
+            <label class="label" for="k-publisher">Publisher</label>
+            <input id="k-publisher" v-model="form.publisher" class="input py-2 text-[13px]" />
+          </div>
+          <div>
+            <label class="label" for="k-url">URL</label>
+            <input id="k-url" v-model="form.sourceUrl" class="input py-2 text-[13px]" type="url" placeholder="https://…" />
+          </div>
+          <div>
+            <label class="label" for="k-category">{{ t('common.filter') }}</label>
+            <input id="k-category" v-model="form.category" class="input py-2 text-[13px]" />
+          </div>
+          <div class="flex flex-wrap items-center gap-3 md:col-span-2">
+            <button class="dash-btn px-4 py-1.5 text-xs" type="submit">{{ t('admin.addSource') }}</button>
+            <div v-if="success" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-[11.5px] font-semibold text-brand-700">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Source registered — pending review.
+            </div>
+            <p v-else-if="!error" class="text-[11px] text-ink-400">Only approved sources are used by the AI assistant.</p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Source list (second row, full width) -->
       <div class="dash-card overflow-hidden">
         <div class="flex items-start gap-3 border-b border-ink-100 px-4 py-3.5">
           <span class="dash-icon-tile">
@@ -124,48 +168,6 @@ onMounted(load);
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Register form -->
-      <div class="dash-card px-4 py-3.5">
-        <div class="flex items-start gap-3">
-          <span class="dash-icon-tile">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-            </svg>
-          </span>
-          <div>
-            <p class="dash-section-title">{{ t('admin.addSource') }}</p>
-            <p class="dash-section-sub mt-0.5">New sources start as pending review</p>
-          </div>
-        </div>
-
-        <form class="mt-3 space-y-3" @submit.prevent="create">
-          <div>
-            <label class="label" for="k-title">{{ t('common.details') }}</label>
-            <input id="k-title" v-model="form.title" class="input py-2 text-[13px]" required />
-          </div>
-          <div>
-            <label class="label" for="k-publisher">Publisher</label>
-            <input id="k-publisher" v-model="form.publisher" class="input py-2 text-[13px]" />
-          </div>
-          <div>
-            <label class="label" for="k-url">URL</label>
-            <input id="k-url" v-model="form.sourceUrl" class="input py-2 text-[13px]" type="url" placeholder="https://…" />
-          </div>
-          <div>
-            <label class="label" for="k-category">{{ t('common.filter') }}</label>
-            <input id="k-category" v-model="form.category" class="input py-2 text-[13px]" />
-          </div>
-          <button class="dash-btn w-full py-2 text-xs" type="submit">{{ t('admin.addSource') }}</button>
-          <div v-if="success" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-[11.5px] font-semibold text-brand-700">
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-              <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Source registered — pending review.
-          </div>
-          <p v-else-if="!error" class="text-[11px] text-ink-400">Only approved sources are used by the AI assistant.</p>
-        </form>
       </div>
     </div>
   </div>
