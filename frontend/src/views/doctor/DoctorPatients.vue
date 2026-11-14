@@ -90,59 +90,47 @@ onMounted(async () => {
         <p class="mt-1 text-[12px] text-ink-400">Patients appear here as soon as they share their records with you.</p>
       </div>
 
-      <div v-else class="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        <RouterLink
-          v-for="patient in filtered"
-          :key="patient.id"
-          :to="`/doctor/patients/${patient.id}`"
-          class="group flex flex-col rounded-xl border border-ink-100 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card"
-        >
-          <!-- Identity -->
-          <div class="flex items-center gap-3">
+      <ul v-else class="divide-y divide-ink-100">
+        <li v-for="patient in filtered" :key="patient.id">
+          <RouterLink
+            :to="`/doctor/patients/${patient.id}`"
+            class="group flex flex-wrap items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-50/70"
+          >
             <span
-              class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white shadow-card"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-card"
               :style="{ backgroundColor: patient.avatarColor }"
             >
               {{ patient.initials }}
             </span>
-            <div class="min-w-0">
-              <p class="truncate text-[14.5px] font-semibold text-ink-900">{{ patient.name }}</p>
-              <p class="mt-0.5 text-[12px] text-ink-400">{{ patient.age ?? '—' }} years · {{ patient.gender.toLowerCase() }}</p>
+            <div class="min-w-[140px]">
+              <p class="truncate text-[13.5px] font-semibold text-ink-900">{{ patient.name }}</p>
+              <p class="text-[11px] text-ink-400">{{ patient.age ?? '—' }} years · {{ patient.gender.toLowerCase() }}</p>
             </div>
-            <StatusBadge v-if="patient.openFlags" status="HIGH" />
-          </div>
-
-          <!-- Scope -->
-          <div class="mt-3 flex flex-wrap gap-1.5">
-            <span
-              v-for="key in patient.scope"
-              :key="key"
-              class="chip bg-brand-50/70 text-[10.5px] font-medium text-brand-700"
-            >{{ SCOPE_LABELS[key] ?? key }}</span>
-          </div>
-
-          <!-- Footer -->
-          <div class="mt-3.5 flex items-center justify-between gap-2 border-t border-ink-100 pt-3">
-            <div class="flex flex-col gap-0.5">
-              <span class="text-[12px] font-semibold text-ink-700">{{ patient.recordCount }} records</span>
+            <div class="flex flex-wrap gap-1">
               <span
-                v-if="patient.expiresAt"
-                class="flex items-center gap-1 text-[11px]"
-                :class="expiresSoon(patient.expiresAt) ? 'font-semibold text-amber-600' : 'text-ink-400'"
-              >
-                <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" />
-                </svg>
-                {{ t('doctor.expires') }} {{ formatDate(patient.expiresAt, ui.locale) }}
-              </span>
+                v-for="key in patient.scope"
+                :key="key"
+                class="chip bg-brand-50/70 px-2 py-0.5 text-[10px] font-medium text-brand-700"
+              >{{ SCOPE_LABELS[key] ?? key }}</span>
             </div>
-            <span class="flex items-center gap-1 text-[11px] font-semibold text-brand-700 opacity-0 transition-opacity group-hover:opacity-100">
-              Open chart
-              <svg viewBox="0 0 20 20" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <span class="ml-auto shrink-0 text-[11.5px] font-semibold text-ink-600">{{ patient.recordCount }} records</span>
+            <span
+              v-if="patient.expiresAt"
+              class="flex shrink-0 items-center gap-1 text-[11px]"
+              :class="expiresSoon(patient.expiresAt) ? 'font-semibold text-amber-600' : 'text-ink-400'"
+            >
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" />
+              </svg>
+              {{ t('doctor.expires') }} {{ formatDate(patient.expiresAt, ui.locale) }}
             </span>
-          </div>
-        </RouterLink>
-      </div>
+            <StatusBadge v-if="patient.openFlags" status="HIGH" />
+            <svg viewBox="0 0 20 20" class="h-3.5 w-3.5 shrink-0 text-ink-300 transition-colors group-hover:text-brand-600" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </RouterLink>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
