@@ -39,6 +39,21 @@ const sorted = computed(() => {
 
 const nextAppointment = computed(() => sorted.value.find((a) => UPCOMING.includes(a.status)) ?? null);
 
+type ListFilter = 'all' | 'upcoming' | 'past';
+const filter = ref<ListFilter>('all');
+
+const visible = computed(() => {
+  if (filter.value === 'upcoming') return sorted.value.filter((a) => UPCOMING.includes(a.status));
+  if (filter.value === 'past') return sorted.value.filter((a) => !UPCOMING.includes(a.status));
+  return sorted.value;
+});
+
+const filterTabs = computed<{ key: ListFilter; label: string; count: number }[]>(() => [
+  { key: 'all', label: 'All', count: appointments.value.length },
+  { key: 'upcoming', label: 'Upcoming', count: counts.value.upcoming },
+  { key: 'past', label: 'Past & cancelled', count: counts.value.completed + counts.value.cancelled },
+]);
+
 function tileClass(status: string): string {
   if (status === 'CONFIRMED') return 'border-brand-200 bg-brand-50 text-brand-700';
   if (status === 'REQUESTED') return 'border-lavender-light bg-lavender-light/50 text-lavender-dark';
@@ -124,13 +139,18 @@ onMounted(load);
 
     <p v-if="error" class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ error }}</p>
 
-    <!-- Summary strip -->
+    <!-- Summary strip (click to filter the list below) -->
     <div class="mb-5 grid gap-4 sm:grid-cols-3">
-      <div v-for="stat in [
-        { label: 'Upcoming', value: counts.upcoming, tone: 'bg-brand-50 text-brand-700', icon: 'M7 2v3M17 2v3M3 8h18M4 5h16v16H4z' },
-        { label: 'Completed', value: counts.completed, tone: 'bg-lavender-light/50 text-lavender-dark', icon: 'M4 5h16v11H9l-5 4zM9 10l2 2 4-4' },
-        { label: 'Cancelled', value: counts.cancelled, tone: 'bg-surface-100 text-ink-600', icon: 'M6 6l12 12M18 6L6 18' },
-      ]" :key="stat.label" class="dash-card flex items-center justify-between px-5 py-4">
+      <button
+        v-for="stat in [
+          { label: 'Upcoming', value: counts.upcoming, key: 'upcoming', tone: 'bg-brand-50 text-brand-700', icon: 'M7 2v3M17 2v3M3 8h18M4 5h16v16H4z' },
+          { label: 'Completed', value: counts.completed, key: 'past', tone: 'bg-lavender-light/50 text-lavender-dark', icon: 'M4 5h16v11H9l-5 4zM9 10l2 2 4-4' },
+          { label: 'Cancelled', value: counts.cancelled, key: 'past', tone: 'bg-surface-100 text-ink-600', icon: 'M6 6l12 12M18 6L6 18' },
+        ]" :key="stat.label"
+        type="button"
+        class="dash-card flex items-center justify-between px-5 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card"
+        @click="filter = stat.key as ListFilter"
+      >
         <div>
           <p class="dash-label">{{ stat.label }}</p>
           <p class="mt-1 text-2xl font-extrabold leading-none tracking-tight text-ink-900">{{ stat.value }}</p>
@@ -140,7 +160,7 @@ onMounted(load);
             <path :d="stat.icon" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </span>
-      </div>
+      </button>
     </div>
 
     <div class="space-y-4">
@@ -191,7 +211,7 @@ onMounted(load);
 
       <!-- Appointment list (second row, full width) -->
       <div class="dash-card overflow-hidden">
-        <div class="flex items-start gap-3 border-b border-ink-100 px-5 py-4">
+        <div class="flex flex-wrap items-center gap-3 border-b border-ink-100 px-5 py-4">
           <span class="dash-icon-tile">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path d="M7 2v3M17 2v3M3 8h18M4 5h16v16H4z" stroke-linecap="round" stroke-linejoin="round" />
@@ -201,16 +221,33 @@ onMounted(load);
             <p class="dash-section-title">{{ t('patient.appointmentsTitle') }}</p>
             <p class="dash-section-sub mt-0.5">Your consultation history</p>
           </div>
+          <div class="ml-auto flex items-center gap-1 rounded-xl bg-surface-100 p-1">
+            <button
+              v-for="f in filterTabs"
+              :key="f.key"
+              type="button"
+              class="rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors"
+              :class="filter === f.key ? 'bg-white text-brand-700 shadow-card' : 'text-ink-500 hover:text-ink-700'"
+              @click="filter = f.key"
+            >
+              {{ f.label }}
+              <span class="ml-1" :class="filter === f.key ? 'text-ink-400' : 'text-ink-300'">{{ f.count }}</span>
+            </button>
+          </div>
         </div>
 
         <div v-if="loading" class="shimmer h-40 animate-pulse bg-ink-100" />
-        <div v-else-if="!sorted.length" class="px-5 py-12 text-center">
-          <p class="text-[14px] font-semibold text-ink-700">No appointments yet</p>
-          <p class="mt-1 text-[12px] text-ink-400">Use the form to request your first visit.</p>
+        <div v-else-if="!visible.length" class="px-5 py-12 text-center">
+          <p class="text-[14px] font-semibold text-ink-700">
+            {{ filter === 'upcoming' ? 'No upcoming appointments' : 'Nothing in this view yet' }}
+          </p>
+          <p class="mt-1 text-[12px] text-ink-400">
+            {{ filter === 'upcoming' ? 'Request a visit with the form above — it will appear here.' : 'Use the form to request your first visit.' }}
+          </p>
         </div>
         <ul v-else class="divide-y divide-ink-100">
           <li
-            v-for="appointment in sorted"
+            v-for="appointment in visible"
             :key="appointment.id"
             class="flex flex-wrap items-center gap-4 px-5 py-3.5 transition-colors hover:bg-surface-50/70"
             :class="appointment.id === nextAppointment?.id ? 'bg-brand-50/40' : ''"
@@ -229,7 +266,7 @@ onMounted(load);
               </div>
               <p class="mt-0.5 text-[12px] text-ink-500">
                 {{ formatDateTime(appointment.scheduledAt, ui.locale) }}
-                <span v-if="relativeLabel(appointment.scheduledAt)" class="font-semibold text-brand-700">· {{ relativeLabel(appointment.scheduledAt) }}</span>
+                <span v-if="UPCOMING.includes(appointment.status) && relativeLabel(appointment.scheduledAt)" class="font-semibold text-brand-700">· {{ relativeLabel(appointment.scheduledAt) }}</span>
               </p>
               <p v-if="appointment.reason" class="mt-1 text-[12px] text-ink-400">{{ appointment.reason }}</p>
             </div>
