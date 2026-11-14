@@ -70,8 +70,8 @@ onMounted(load);
     </header>
 
     <div class="space-y-4">
-      <!-- Register form (first row, compact full width) -->
-      <div class="dash-card max-w-3xl px-4 py-3.5">
+      <!-- Register form (first row: single-line horizontal form) -->
+      <div class="dash-card px-4 py-3.5">
         <div class="flex items-center gap-2.5">
           <span class="dash-icon-tile h-9 w-9">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -82,39 +82,37 @@ onMounted(load);
             <p class="dash-section-title">{{ t('admin.addSource') }}</p>
             <p class="dash-section-sub mt-0.5">New sources start as pending review</p>
           </div>
+          <span v-if="success" class="ml-auto flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-[11.5px] font-semibold text-brand-700">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Source registered — pending review.
+          </span>
         </div>
 
-        <form class="mt-3 grid gap-3 md:grid-cols-2" @submit.prevent="create">
+        <form class="mt-3 grid items-end gap-3 lg:grid-cols-[2fr_1.5fr_2fr_1.5fr_auto]" @submit.prevent="create">
           <div>
             <label class="label" for="k-title">{{ t('common.details') }}</label>
-            <input id="k-title" v-model="form.title" class="input py-2 text-[13px]" required />
+            <input id="k-title" v-model="form.title" class="input py-1.5 text-[13px]" required />
           </div>
           <div>
             <label class="label" for="k-publisher">Publisher</label>
-            <input id="k-publisher" v-model="form.publisher" class="input py-2 text-[13px]" />
+            <input id="k-publisher" v-model="form.publisher" class="input py-1.5 text-[13px]" />
           </div>
           <div>
             <label class="label" for="k-url">URL</label>
-            <input id="k-url" v-model="form.sourceUrl" class="input py-2 text-[13px]" type="url" placeholder="https://…" />
+            <input id="k-url" v-model="form.sourceUrl" class="input py-1.5 text-[13px]" type="url" placeholder="https://…" />
           </div>
           <div>
             <label class="label" for="k-category">{{ t('common.filter') }}</label>
-            <input id="k-category" v-model="form.category" class="input py-2 text-[13px]" />
+            <input id="k-category" v-model="form.category" class="input py-1.5 text-[13px]" />
           </div>
-          <div class="flex flex-wrap items-center gap-3 md:col-span-2">
-            <button class="dash-btn px-4 py-1.5 text-xs" type="submit">{{ t('admin.addSource') }}</button>
-            <div v-if="success" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-[11.5px] font-semibold text-brand-700">
-              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              Source registered — pending review.
-            </div>
-            <p v-else-if="!error" class="text-[11px] text-ink-400">Only approved sources are used by the AI assistant.</p>
-          </div>
+          <button class="dash-btn px-4 py-2 text-xs" type="submit">{{ t('admin.addSource') }}</button>
         </form>
+        <p v-if="!success" class="mt-2 text-[11px] text-ink-400">Only approved sources are used by the AI assistant.</p>
       </div>
 
-      <!-- Source list (second row, full width) -->
+      <!-- Source list (second row: governance table) -->
       <div class="dash-card overflow-hidden">
         <div class="flex items-start gap-3 border-b border-ink-100 px-4 py-3.5">
           <span class="dash-icon-tile">
@@ -126,7 +124,7 @@ onMounted(load);
             <p class="dash-section-title">Registered sources</p>
             <p class="dash-section-sub mt-0.5">Approved material feeds every grounded AI answer</p>
           </div>
-          <span class="ml-auto chip bg-surface-100 text-ink-500">{{ sources.length }}</span>
+          <span class="ml-auto chip bg-surface-100 text-ink-500">{{ sources.length }} sources · {{ totalChunks }} chunks</span>
         </div>
 
         <div v-if="loading" class="shimmer h-64 animate-pulse bg-ink-50" />
@@ -136,37 +134,49 @@ onMounted(load);
           <p class="mt-1 text-[12px] text-ink-400">Register the first source to ground the assistant.</p>
         </div>
 
-        <div v-else class="grid gap-3 p-4 sm:grid-cols-2">
-          <div
-            v-for="source in sources"
-            :key="source.id"
-            class="flex flex-col justify-between rounded-xl border border-ink-100 bg-white p-3.5 transition-colors hover:border-brand-200"
-          >
-            <div class="min-w-0">
-              <div class="flex items-start justify-between gap-2">
-                <p class="text-[14px] font-semibold leading-snug text-ink-900">{{ source.title }}</p>
-                <StatusBadge :status="source.reviewStatus" />
-              </div>
-              <p class="mt-1 text-[12px] text-ink-400">{{ source.publisher }} · {{ source.category || 'Uncategorised' }}</p>
-              <span class="mt-2 inline-block chip bg-surface-100 text-[10.5px] text-ink-500">{{ source.chunkCount }} chunks</span>
-            </div>
-            <div class="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-ink-100 pt-3">
-              <select
-                class="input w-32 py-1.5 text-xs"
-                :class="source.reviewStatus === 'APPROVED' ? 'border-brand-300' : ''"
-                :value="source.reviewStatus"
-                @change="setReview(source, ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="PENDING">{{ t('status.PENDING') }}</option>
-                <option value="APPROVED">{{ t('admin.approved') }}</option>
-                <option value="REJECTED">{{ t('status.REJECTED') }}</option>
-              </select>
-              <button
-                class="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
-                @click="remove(source)"
-              >Delete</button>
-            </div>
-          </div>
+        <div v-else class="overflow-x-auto">
+          <table class="dash-table-compact w-full min-w-[760px] border-collapse">
+            <thead class="bg-surface-50">
+              <tr>
+                <th class="dash-th">Source</th>
+                <th class="dash-th">Publisher</th>
+                <th class="dash-th">Category</th>
+                <th class="dash-th text-center">Chunks</th>
+                <th class="dash-th">Status</th>
+                <th class="dash-th">Review</th>
+                <th class="dash-th text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="source in sources" :key="source.id" class="dash-row">
+                <td class="dash-td max-w-[240px] truncate font-semibold text-ink-800">{{ source.title }}</td>
+                <td class="dash-td text-ink-500">{{ source.publisher || '—' }}</td>
+                <td class="dash-td">
+                  <span class="chip bg-surface-100 text-[10.5px] text-ink-500">{{ source.category || 'Uncategorised' }}</span>
+                </td>
+                <td class="dash-td text-center font-semibold text-ink-700">{{ source.chunkCount }}</td>
+                <td class="dash-td"><StatusBadge :status="source.reviewStatus" /></td>
+                <td class="dash-td">
+                  <select
+                    class="input w-32 py-1.5 text-xs"
+                    :class="source.reviewStatus === 'APPROVED' ? 'border-brand-300' : ''"
+                    :value="source.reviewStatus"
+                    @change="setReview(source, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="PENDING">{{ t('status.PENDING') }}</option>
+                    <option value="APPROVED">{{ t('admin.approved') }}</option>
+                    <option value="REJECTED">{{ t('status.REJECTED') }}</option>
+                  </select>
+                </td>
+                <td class="dash-td text-right">
+                  <button
+                    class="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                    @click="remove(source)"
+                  >Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
