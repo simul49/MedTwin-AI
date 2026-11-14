@@ -289,8 +289,12 @@
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #7c8da0;
-  background: #f8fbfc;
+  color: rgba(255, 255, 255, 0.75);
+  background: linear-gradient(180deg, #0a2a63 0%, #0d3275 100%);
+}
+
+.dash-th:first-child {
+  border-top-left-radius: 0;
 }
 
 .dash-td {
