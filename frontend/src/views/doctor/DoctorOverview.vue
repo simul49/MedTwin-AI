@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { doctor, connect } from '@/api/endpoints';
 import { formatDate } from '@/composables/useAsync';
+import { useRealtime } from '@/composables/useRealtime';
+import { useUiStore } from '@/stores/ui';
 import TrendChart from '@/components/ui/TrendChart.vue';
 import bodyMap from '@/assets/body-map.png';
 import type { Appointment, DoctorPatient, Observation, TimelineEvent } from '@/api/types';
 
+const ui = useUiStore();
 const patients = ref<DoctorPatient[]>([]);
 const appointments = ref<Appointment[]>([]);
 const observations = ref<Observation[]>([]);
@@ -74,9 +77,10 @@ async function load() {
   try {
     patients.value = (await doctor.patients()).results;
     appointments.value = (await connect.appointments()).results;
-    const first = patients.value[0];
-    if (first) {
-      const summary = await doctor.summary(first.id);
+    const target = patients.value.find((p) => p.id === selectedPatientId.value) ?? patients.value[0];
+    if (target) {
+      selectedPatientId.value = target.id;
+      const summary = await doctor.summary(target.id);
       observations.value = summary.observations;
       timeline.value = summary.timeline;
     }
@@ -88,7 +92,77 @@ async function load() {
   }
 }
 
-onMounted(load);
+// --- Real-time data entry: the clinician records vitals for an authorised patient ---
+interface VitalField {
+  key: string;
+  label: string;
+  unit: string;
+  obsLabel: string;
+  placeholder: string;
+  range: string;
+  normal: (v: number) => string;
+}
+
+const VITAL_FIELDS: VitalField[] = [
+  { key: 'heart', label: 'Heart rate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', range: '50 - 110', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
+  { key: 'bp', label: 'Blood pressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', range: '90 - 130', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
+  { key: 'spo2', label: 'SpO₂', unit: '%', obsLabel: 'SpO2', placeholder: '97', range: '94 - 100', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
+  { key: 'glucose', label: 'Blood glucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', range: '3.9 - 7.8', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
+];
+
+const selectedPatientId = ref<string | null>(null);
+const readings = ref<Record<string, string>>({});
+const savingVitals = ref(false);
+
+const selectedPatient = computed(() =>
+  patients.value.find((p) => p.id === selectedPatientId.value) ?? null,
+);
+
+function filledFields() {
+  return VITAL_FIELDS.filter((f) => {
+    const raw = String(readings.value[f.key] ?? '').trim();
+    return raw !== '' && !Number.isNaN(Number(raw));
+  });
+}
+
+async function saveVitals() {
+  const target = selectedPatient.value;
+  const fields = filledFields();
+  if (!target || !fields.length) return;
+  savingVitals.value = true;
+  try {
+    for (const f of fields) {
+      const raw = String(readings.value[f.key] ?? '').trim();
+      await doctor.addObservation(target.id, {
+        label: f.obsLabel,
+        value: raw,
+        unit: f.unit,
+        flag: f.normal(Number(raw)),
+        reference_range: f.range,
+      });
+      readings.value[f.key] = '';
+    }
+    ui.notify(`Recorded ${fields.length} reading${fields.length === 1 ? '' : 's'} for ${target.name} — their dashboard updated live.`, 'success');
+    await load();
+  } catch (err) {
+    ui.notify(err instanceof Error ? err.message : 'Could not save the readings.', 'error');
+  } finally {
+    savingVitals.value = false;
+  }
+}
+
+// Live: platform notifications refresh this workspace so patient-side
+// changes appear without a manual reload.
+const realtime = useRealtime();
+let unsubscribe: (() => void) | null = null;
+
+onMounted(() => {
+  void load();
+  realtime.connect();
+  unsubscribe = realtime.on('notification', () => void load());
+});
+
+onUnmounted(() => unsubscribe?.());
 </script>
 
 <template>
@@ -201,6 +275,62 @@ onMounted(load);
         </div>
         <div class="border-t border-ink-100 px-4 py-3">
           <p class="text-[11px] text-ink-400">{{ filtered.length }} authorised patient{{ filtered.length === 1 ? '' : 's' }} · {{ upcoming.length }} upcoming appointment{{ upcoming.length === 1 ? '' : 's' }}</p>
+        </div>
+      </div>
+
+      <!-- Real-time data entry -->
+      <div class="dash-card mt-4 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-ink-100 px-5 py-4">
+          <div class="flex items-center gap-3">
+            <span class="dash-icon-tile">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M3 12h4l2-5 3 10 2-5h7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <p class="dash-section-title">Record vitals</p>
+              <p class="dash-section-sub mt-0.5">Real-time · appears on the patient's dashboard instantly</p>
+            </div>
+          </div>
+          <span class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            LIVE
+          </span>
+        </div>
+        <div class="px-5 py-4">
+          <label class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">Patient</label>
+          <select v-model="selectedPatientId" class="input mt-1.5 w-full text-xs">
+            <option v-for="patient in patients" :key="patient.id" :value="patient.id">
+              {{ patient.name }} (P-{{ patient.id.slice(0, 4).toUpperCase() }})
+            </option>
+          </select>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div v-for="field in VITAL_FIELDS" :key="field.key">
+              <label class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">{{ field.label }}</label>
+              <div class="mt-1.5 flex items-center rounded-xl border border-ink-200 bg-surface-50 transition-colors focus-within:border-brand-400 focus-within:bg-white">
+                <input
+                  v-model="readings[field.key]"
+                  type="number"
+                  :placeholder="field.placeholder"
+                  class="w-full bg-transparent px-3 py-2 text-[13px] outline-none"
+                />
+                <span class="pr-3 text-[10.5px] font-medium text-ink-400">{{ field.unit }}</span>
+              </div>
+              <p class="mt-1 text-[10px] text-ink-300">Normal {{ field.range }}</p>
+            </div>
+          </div>
+
+          <button
+            class="dash-btn mt-4 w-full"
+            :disabled="savingVitals || !filledFields().length || !selectedPatient"
+            @click="saveVitals"
+          >
+            {{ savingVitals ? 'Saving…' : filledFields().length ? `Send ${filledFields().length} reading${filledFields().length === 1 ? '' : 's'} to patient twin` : 'Send readings to patient twin' }}
+          </button>
+          <p class="mt-2 text-[10.5px] leading-relaxed text-ink-400">
+            Values are flagged automatically against the reference range and pushed to the patient over WebSocket.
+          </p>
         </div>
       </div>
 

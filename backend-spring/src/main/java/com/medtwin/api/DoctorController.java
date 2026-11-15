@@ -12,11 +12,76 @@ public class DoctorController {
     private final Db db;
     private final Access access;
     private final Audit audit;
+    private final Realtime realtime;
 
-    public DoctorController(Db db, Access access, Audit audit) {
+    public DoctorController(Db db, Access access, Audit audit, Realtime realtime) {
         this.db = db;
         this.access = access;
         this.audit = audit;
+        this.realtime = realtime;
+    }
+
+    /**
+     * Clinician-recorded observation (real-time data entry). Requires an active
+     * consent whose scope includes lab results; the patient is notified over
+     * WebSocket so their dashboard updates the moment the value lands.
+     */
+    @PostMapping("/doctor/patients/{patientId}/observations/")
+    public ResponseEntity<Object> addObservation(@PathVariable String patientId,
+                                                 @RequestBody(required = false) Map<String, Object> body) {
+        access.require("DOCTOR");
+        Principal doctor = Ctx.user();
+        Map<String, Object> patient = access.resolvePatient(doctor, patientId);
+        String pid = J.s(patient.get("id"));
+        List<String> scope = access.scope(doctor, pid);
+        if (!scope.contains("all") && !access.has(scope, "lab_results")) {
+            throw ApiError.forbidden();
+        }
+
+        String label = J.gs(body, "label").trim();
+        if (label.isEmpty()) throw ApiError.bad("Label the measurement.");
+        String valueRaw = J.gs(body, "value").trim();
+        if (valueRaw.isEmpty()) throw ApiError.bad("Provide the measured value.");
+        Double numeric;
+        try {
+            numeric = Double.valueOf(valueRaw);
+        } catch (NumberFormatException e) {
+            throw ApiError.bad("Value must be numeric.");
+        }
+        String flag = J.gs(body, "flag").trim().toUpperCase();
+        if (!Set.of("NORMAL", "LOW", "HIGH", "CRITICAL").contains(flag)) {
+            throw ApiError.bad("Unknown flag.");
+        }
+        String referenceRange = J.gs(body, "reference_range").trim();
+
+        String id = J.uuid();
+        db.exec("INSERT INTO observations (id, patient_id, label, value_numeric, value_text, unit, "
+                        + "reference_range, flag, observed_at, source_type, created_at) "
+                        + "VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, 'CLINICIAN', ?)",
+                id, pid, label, numeric,
+                J.gs(body, "unit").trim().isEmpty() ? null : J.gs(body, "unit").trim(),
+                referenceRange.isEmpty() ? null : referenceRange,
+                flag, J.ts(), J.ts());
+        audit.log("CLINICIAN_OBSERVATION_CREATE", "observation", id, "SUCCESS",
+                J.map("patientId", pid, "label", label));
+
+        // Real-time: the patient's dashboard reloads itself on this notification.
+        try {
+            realtime.pushToUser(pid, J.map(
+                    "type", "notification",
+                    "notification", J.map(
+                            "type", "OBSERVATION_UPDATE",
+                            "title", "New clinician reading",
+                            "body", label + " " + valueRaw
+                                    + (J.gs(body, "unit").trim().isEmpty() ? "" : " " + J.gs(body, "unit").trim())
+                                    + " was recorded by your clinician.",
+                            "link", "/patient")));
+        } catch (Exception ignored) {
+            // best-effort
+        }
+
+        return ResponseEntity.status(201).body(
+                Views.observation(db.require("SELECT * FROM observations WHERE id = ?", id)));
     }
 
     @GetMapping("/doctor/authorized-patients/")

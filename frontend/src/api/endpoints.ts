@@ -188,6 +188,13 @@ export const payments = {
 // --- doctor ------------------------------------------------------------------
 export const doctor = {
   patients: () => list<DoctorPatient>('/doctor/authorized-patients/'),
+  addObservation: (patientId: string, body: {
+    label: string;
+    value: string;
+    unit: string;
+    flag: string;
+    reference_range?: string;
+  }) => api.post(`/doctor/patients/${patientId}/observations/`, body),
   summary: (patientId: string) =>
     api.get<{
       patient: { id: string; name: string; email: string; initials: string };
