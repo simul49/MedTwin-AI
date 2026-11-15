@@ -114,7 +114,12 @@ SYSTEM_PROMPT = (
     "7. Match reply length to the question. Casual chat (greetings, thanks, small talk) "
     "gets a 1-2 sentence friendly reply with no sections and no citations. Health "
     "questions get a concise answer — include only the sections that add value and "
-    "never repeat information."
+    "never repeat information.\n"
+    "8. ALWAYS write your reply in English, regardless of the language of the retrieved "
+    "passages, patient documents or OCR text. If a source is in another language (for "
+    "example a Chinese medical certificate), translate and summarise it into English; "
+    "keep only universally recognised medical terms (e.g. HbA1c) and institution names "
+    "as-is."
 )
 
 CASUAL_REPLY_INSTRUCTIONS = (
