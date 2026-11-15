@@ -120,18 +120,18 @@ const controlIcons = [
         </div>
         <p class="mt-4 leading-relaxed text-ink-600">{{ t('trust.indicatorBody') }}</p>
 
-        <ol class="mt-5 space-y-2.5">
+        <ol class="mt-4 divide-y divide-ink-100">
           <li
             v-for="(factor, index) in factors"
             :key="factor.key"
-            class="group flex gap-3.5 rounded-xl border border-ink-200 bg-white px-4 py-3 transition-colors duration-300 hover:border-brand-300"
+            class="flex items-start gap-3.5 py-3.5 first:pt-1 last:pb-0"
           >
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[10.5px] font-bold text-brand-700 transition-colors duration-300 group-hover:bg-brand-100">
-              F{{ index + 1 }}
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
+              {{ index + 1 }}
             </span>
             <div>
-              <p class="text-[13px] font-semibold text-ink-800">{{ t(`safety.${factor.key}`) }}</p>
-              <p class="muted mt-0.5 text-[12px] leading-snug">{{ factor.body }}</p>
+              <p class="text-[14px] font-semibold text-ink-800">{{ t(`safety.${factor.key}`) }}</p>
+              <p class="muted mt-0.5 text-[13px] leading-relaxed">{{ factor.body }}</p>
             </div>
           </li>
         </ol>
