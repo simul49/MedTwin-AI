@@ -10,7 +10,7 @@ import java.util.*;
 /** Paid video consultations: booking, room access and the prescription note. */
 @RestController
 public class ConsultationController {
-    private static final double DEFAULT_FEE = 49.00;
+    private static final double DEFAULT_FEE = 10.00;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Db db;
