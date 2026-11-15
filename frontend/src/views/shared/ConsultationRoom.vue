@@ -15,6 +15,7 @@ const consultation = ref<Consultation | null>(null);
 const room = ref('');
 const status = ref<string>('');
 const live = ref(false);
+const ended = computed(() => status.value === 'COMPLETED');
 const reconnecting = ref(false);
 const micOn = ref(true);
 const camOn = ref(true);
@@ -362,6 +363,13 @@ function cleanup() {
 onMounted(async () => {
   error.value = null;
   try {
+    // Completed consultations open in summary mode — prescription, payment
+    // receipt and timing; no room join, no camera.
+    consultation.value = await consultations.detail(props.id);
+    status.value = consultation.value.status;
+    if (consultation.value.prescriptionNote) prescription.value = consultation.value.prescriptionNote;
+    if (consultation.value.status === 'COMPLETED') return;
+
     await loadIceConfig();
     consultation.value = await consultations.join(props.id);
     room.value = String((consultation.value as { room?: string }).room ?? '');
@@ -426,9 +434,9 @@ onUnmounted(cleanup);
       <div class="flex items-center gap-2">
         <span class="chip bg-brand-50 font-semibold text-brand-700">
           <span class="h-1.5 w-1.5 rounded-full" :class="live ? qualityTone : 'bg-ink-300'" />
-          {{ live ? `Connected · ${quality} quality` : reconnecting ? 'Reconnecting…' : peerOnline ? 'Peer in room' : 'Waiting for the other participant' }}
+          {{ ended ? 'Consultation ended' : live ? `Connected · ${quality} quality` : reconnecting ? 'Reconnecting…' : peerOnline ? 'Peer in room' : 'Waiting for the other participant' }}
         </span>
-        <button class="btn-danger px-3 py-1.5 text-xs" @click="endCall">Leave room</button>
+        <button class="btn-danger px-3 py-1.5 text-xs" @click="endCall">{{ ended ? 'Back to consultations' : 'Leave room' }}</button>
       </div>
     </header>
 
@@ -447,9 +455,11 @@ onUnmounted(cleanup);
               <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21a8 8 0 0116 0" stroke-linecap="round" />
             </svg>
           </span>
-          <p class="text-[14px] font-semibold text-white/80">{{ reconnecting ? 'Reconnecting…' : 'Waiting room' }}</p>
+          <p class="text-[14px] font-semibold text-white/80">{{ ended ? 'Consultation ended' : reconnecting ? 'Reconnecting…' : 'Waiting room' }}</p>
           <p class="max-w-xs text-[12px] text-white/50">
-            {{ reconnecting
+            {{ ended
+              ? 'Read the advice & prescription in the summary panel — it stays available here.'
+              : reconnecting
               ? 'The connection dropped — restoring the video call automatically.'
               : 'The video call starts automatically when both participants are in the room.' }}
           </p>
@@ -478,7 +488,7 @@ onUnmounted(cleanup);
           Audio-only mode — no camera available
         </span>
         <!-- controls -->
-        <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+        <div v-if="!ended" class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
           <button
             class="flex h-10 w-10 items-center justify-center rounded-full text-white shadow-lg transition-colors"
             :class="micOn ? 'bg-white/20 hover:bg-white/30' : 'bg-rose-600'"
