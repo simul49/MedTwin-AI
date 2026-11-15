@@ -126,7 +126,7 @@ export default {
   },
   solutions: {
     title: 'Solutions',
-    lead: 'Six capabilities, each with documented limits.',
+    lead: 'Each capability ships with documented limits.',
     twinTitle: 'Patient Digital Twin',
     twinBody: 'A structured, traceable view of records, medications, allergies, results and documents.',
     assistantTitle: 'AI Healthcare Assistant',

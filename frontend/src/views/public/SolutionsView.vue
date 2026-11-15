@@ -33,30 +33,44 @@ const solutions = [
       </div>
     </div>
 
-    <div class="mt-10 grid gap-5 md:grid-cols-2">
-      <article
-        v-for="(item, index) in solutions"
-        :key="item.key"
-        v-reveal="index + 1"
-        class="card card-pad group transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
-      >
-        <div class="flex items-start gap-4">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 transition-colors duration-300 group-hover:bg-brand-100">
-            <svg class="h-6 w-6 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path :d="item.icon" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="font-semibold">{{ t(`solutions.${item.key}Title`) }}</h2>
-              <span v-if="item.experimental" class="chip bg-amber-100 text-amber-800">{{ t('solutions.experimental') }}</span>
+    <!-- Capabilities -->
+    <div class="mt-14">
+      <div class="flex items-center gap-4">
+        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Capabilities</h2>
+        <span class="h-px flex-1 bg-ink-100" />
+        <span class="text-[12px] font-medium text-ink-400">{{ solutions.length }} modules · documented limits</span>
+      </div>
+
+      <div class="mt-6 grid gap-5 md:grid-cols-2">
+        <article
+          v-for="(item, index) in solutions"
+          :key="item.key"
+          v-reveal="index + 1"
+          class="card card-pad group relative transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
+          :class="index === solutions.length - 1 ? 'md:col-span-2' : ''"
+        >
+          <span class="absolute right-4 top-4 text-[11px] font-bold tabular-nums text-ink-200">{{ String(index + 1).padStart(2, '0') }}</span>
+          <div class="flex items-start gap-4">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 transition-colors duration-300 group-hover:bg-brand-100">
+              <svg class="h-6 w-6 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path :d="item.icon" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-[15px] font-semibold text-ink-800">{{ t(`solutions.${item.key}Title`) }}</h2>
+                <span
+                  v-if="item.experimental"
+                  class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200"
+                >{{ t('solutions.experimental') }}</span>
+              </div>
+              <p class="muted mt-1.5 text-[13.5px] leading-relaxed">{{ t(`solutions.${item.key}Body`) }}</p>
             </div>
-            <p class="muted mt-1.5 leading-relaxed">{{ t(`solutions.${item.key}Body`) }}</p>
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
 
-    <p v-reveal class="mt-10 text-xs text-ink-400">{{ t('home.disclaimerNote') }}</p>
+    <p v-reveal class="mt-10 border-t border-ink-100 pt-5 text-xs leading-relaxed text-ink-400">{{ t('home.disclaimerNote') }}</p>
   </div>
 </template>
