@@ -37,7 +37,17 @@ jobs:
 
       - name: Build
         shell: bash
-        run: set -o pipefail && npx vite build 2>&1 | tee /tmp/step-build.log
+        run: |
+          set +e
+          npx vite build 2>&1 | tee /tmp/step-build.log
+          code=$?
+          if [ $code -ne 0 ]; then
+            # Surface the failure publicly via annotations (logs need admin auth)
+            tail -n 10 /tmp/step-build.log | while IFS= read -r line; do
+              echo "::error::${line:0:1000}"
+            done
+          fi
+          exit $code
         working-directory: frontend
 
       # SPA fallback: serve index.html for unknown routes (vue-router history mode)
