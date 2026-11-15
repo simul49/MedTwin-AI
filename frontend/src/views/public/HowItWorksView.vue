@@ -33,9 +33,9 @@ const steps = [1, 2, 3, 4, 5, 6, 7];
     <!-- Steps: connected vertical timeline -->
     <div class="mt-16">
       <div class="flex items-center gap-4">
-        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">The journey</h2>
+        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('how.journey') }}</h2>
         <span class="h-px flex-1 bg-ink-100" />
-        <span class="text-[12px] font-medium text-ink-400">{{ steps.length }} steps · each one visible to you</span>
+        <span class="text-[12px] font-medium text-ink-400">{{ t('how.journeyCaption', { n: steps.length }) }}</span>
       </div>
 
       <ol class="relative mt-8 space-y-5">
@@ -63,7 +63,7 @@ const steps = [1, 2, 3, 4, 5, 6, 7];
     <!-- Safety net -->
     <div class="mt-16">
       <div class="flex items-center gap-4">
-        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">The safety net</h2>
+        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('how.safetyNet') }}</h2>
         <span class="h-px flex-1 bg-ink-100" />
       </div>
       <div class="mt-6 grid gap-6 lg:grid-cols-2">

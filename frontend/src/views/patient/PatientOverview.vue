@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { patient, connect } from '@/api/endpoints';
@@ -8,6 +9,7 @@ import { useRealtime } from '@/composables/useRealtime';
 import heroDigitalTwin from '@/assets/hero-digital-twin.png';
 import type { Observation } from '@/api/types';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const ui = useUiStore();
 const { data: twin, loading, error, run: reloadTwin } = useAsync(() => patient.digitalTwin());
@@ -98,25 +100,25 @@ const vitals = computed<Vital[]>(() => {
   const hrv = findObs('hrv', 'variability');
   const list: Vital[] = [
     vitalFrom(heart, {
-      key: 'heart', label: 'Heart Rate', unit: 'bpm', note: heart ? 'Resting pulse' : 'No reading yet',
+      key: 'heart', label: t('patient.fieldHeartRate'), unit: 'bpm', note: heart ? t('patient.noteResting') : t('patient.noReadingYet'),
       spark: realSpark(historyFor('heart', 'pulse')), annotationStyle: 'left-[3%] top-[14%]',
     }),
     vitalFrom(bp, {
-      key: 'bp', label: 'Blood Pressure', unit: bp?.unit || 'mmHg', note: bp ? 'Systolic reading' : 'No reading yet',
+      key: 'bp', label: t('patient.fieldBloodPressure'), unit: bp?.unit || 'mmHg', note: bp ? t('patient.noteSystolic') : t('patient.noReadingYet'),
       spark: realSpark(historyFor('systolic', 'blood pressure')), annotationStyle: 'right-[3%] top-[24%]',
     }),
     vitalFrom(spo2, {
-      key: 'spo2', label: 'SpO₂', unit: '%', note: spo2 ? 'Oxygen saturation' : 'No reading yet',
+      key: 'spo2', label: t('patient.fieldSpo2'), unit: '%', note: spo2 ? t('patient.noteOxygen') : t('patient.noReadingYet'),
       spark: realSpark(historyFor('spo2', 'oxygen')), annotationStyle: 'left-[5%] top-[48%]',
     }),
     vitalFrom(glucose, {
-      key: 'glucose', label: 'Blood Glucose', unit: glucose?.unit || 'mmol/L', note: glucose ? 'Latest panel' : 'No reading yet',
+      key: 'glucose', label: t('patient.fieldGlucose'), unit: glucose?.unit || 'mmol/L', note: glucose ? t('patient.notePanel') : t('patient.noReadingYet'),
       spark: realSpark(historyFor('glucose', 'hba1c')), annotationStyle: 'right-[5%] top-[62%]',
     }),
   ];
   if (hrv) {
     list.push(vitalFrom(hrv, {
-      key: 'hrv', label: 'HRV', unit: hrv.unit || 'ms', note: 'Autonomic balance',
+      key: 'hrv', label: 'HRV', unit: hrv.unit || 'ms', note: t('patient.noteAutonomic'),
       spark: realSpark(historyFor('hrv', 'variability')), annotationStyle: 'left-[7%] top-[76%]',
     }));
   }
@@ -138,10 +140,10 @@ interface ReadingField {
 }
 
 const READING_FIELDS: ReadingField[] = [
-  { key: 'heart', label: 'Heart rate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', range: '50 - 110', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
-  { key: 'bp', label: 'Blood pressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', range: '90 - 130', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
-  { key: 'spo2', label: 'SpO₂', unit: '%', obsLabel: 'SpO2', placeholder: '97', range: '94 - 100', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
-  { key: 'glucose', label: 'Blood glucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', range: '3.9 - 7.8', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
+  { key: 'heart', label: 'patient.fieldHeartRate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', range: '50 - 110', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
+  { key: 'bp', label: 'patient.fieldBloodPressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', range: '90 - 130', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
+  { key: 'spo2', label: 'patient.fieldSpo2', unit: '%', obsLabel: 'SpO2', placeholder: '97', range: '94 - 100', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
+  { key: 'glucose', label: 'patient.fieldGlucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', range: '3.9 - 7.8', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
 ];
 
 const readings = ref<Record<string, string>>({ heart: '', bp: '', spo2: '', glucose: '' });
@@ -161,9 +163,9 @@ async function saveReadings() {
     for (const item of payload) await patient.createObservation(item);
     Object.keys(readings.value).forEach((k) => { readings.value[k] = ''; });
     await reloadTwin();
-    ui.notify('Reading saved — your twin is up to date.', 'success');
+    ui.notify(t('patient.readingSaved'), 'success');
   } catch (err) {
-    ui.notify(err instanceof Error ? err.message : 'Could not save the reading.', 'error');
+    ui.notify(err instanceof Error ? err.message : t('patient.readingFailed'), 'error');
   } finally {
     savingReading.value = false;
   }
@@ -317,11 +319,11 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
 
           <!-- Log a reading: fills the twin with this patient's real vitals -->
           <div class="dash-card dash-card-pad">
-            <p class="dash-section-title">Log a reading</p>
-            <p class="mt-0.5 text-[11px] text-ink-400">Your numbers appear on the twin instantly.</p>
+            <p class="dash-section-title">{{ t('patient.logReading') }}</p>
+            <p class="mt-0.5 text-[11px] text-ink-400">{{ t('patient.logHint') }}</p>
             <div class="mt-3 space-y-2">
               <div v-for="field in READING_FIELDS" :key="field.key" class="flex items-center gap-2">
-                <label class="w-[104px] shrink-0 text-[11.5px] font-medium text-ink-600">{{ field.label }}</label>
+                <label class="w-[104px] shrink-0 text-[11.5px] font-medium text-ink-600">{{ t(field.label) }}</label>
                 <input
                   v-model="readings[field.key]"
                   class="input px-2.5 py-1.5 text-[12.5px]"
@@ -335,7 +337,7 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
                 type="button"
                 :disabled="savingReading || !READING_FIELDS.some((f) => readings[f.key]?.trim())"
                 @click="saveReadings"
-              >{{ savingReading ? 'Saving…' : 'Save readings' }}</button>
+              >{{ savingReading ? t('patient.saving') : t('patient.saveReadings') }}</button>
             </div>
           </div>
         </div>

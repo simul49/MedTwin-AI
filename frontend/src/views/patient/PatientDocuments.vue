@@ -119,7 +119,8 @@ function download(document: DocumentRecord) {
 }
 
 const statusText = (status: string) =>
-  status === 'PROCESSED' ? 'Extraction successful' : status === 'FAILED' ? 'Extraction failed' : 'Processing text extraction…';
+  status === 'PROCESSED' ? t('patient.statusProcessed')
+    : status === 'FAILED' ? t('patient.statusFailed') : t('patient.statusProcessing');
 
 const statusChip = (status: string) =>
   status === 'PROCESSED' ? 'bg-brand-50 text-brand-700' : status === 'FAILED' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700';
@@ -160,13 +161,13 @@ onUnmounted(() => unsubscribe?.());
         <p class="mt-2 text-[14px] text-ink-500">Add a report, prescription or image. Extracted fields always need your review.</p>
       </div>
       <label class="flex items-center gap-2 text-[12px] font-semibold text-ink-500">
-        Document category
-        <select v-model="category" class="input w-40 text-xs" aria-label="Document category">
-          <option value="OTHER">Other</option>
-          <option value="LAB">Lab report</option>
-          <option value="IMAGING">Imaging</option>
-          <option value="PRESCRIPTION">Prescription</option>
-          <option value="LETTER">Letter</option>
+        {{ t('patient.docCategory') }}
+        <select v-model="category" class="input w-40 text-xs" :aria-label="t('patient.docCategory')">
+          <option value="OTHER">{{ t('patient.docOther') }}</option>
+          <option value="LAB">{{ t('patient.docLab') }}</option>
+          <option value="IMAGING">{{ t('patient.docImaging') }}</option>
+          <option value="PRESCRIPTION">{{ t('patient.docPrescription') }}</option>
+          <option value="LETTER">{{ t('patient.docLetter') }}</option>
         </select>
       </label>
     </div>
@@ -206,10 +207,10 @@ onUnmounted(() => unsubscribe?.());
             </span>
             <div>
               <p class="dash-section-title">
-                Uploaded files
+                {{ t('patient.uploadedFiles') }}
                 <span class="ml-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">{{ documents.length }}</span>
               </p>
-              <p class="dash-section-sub mt-0.5">Extraction status and source documents</p>
+              <p class="dash-section-sub mt-0.5">{{ t('patient.uploadedSub') }}</p>
             </div>
           </div>
           <div v-if="loading" class="h-28 animate-pulse bg-ink-100" />
@@ -217,11 +218,11 @@ onUnmounted(() => unsubscribe?.());
             <table class="w-full min-w-[620px] border-collapse">
               <thead class="bg-surface-50">
                 <tr>
-                  <th class="dash-th">Filename</th>
-                  <th class="dash-th">Uploaded</th>
-                  <th class="dash-th">Size</th>
-                  <th class="dash-th">Status</th>
-                  <th class="dash-th">Actions</th>
+                  <th class="dash-th">{{ t('patient.colFilename') }}</th>
+                  <th class="dash-th">{{ t('patient.colUploaded') }}</th>
+                  <th class="dash-th">{{ t('patient.colSize') }}</th>
+                  <th class="dash-th">{{ t('patient.colStatus') }}</th>
+                  <th class="dash-th">{{ t('patient.colActions') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -261,13 +262,13 @@ onUnmounted(() => unsubscribe?.());
                   </td>
                   <td class="dash-td">
                     <div class="flex gap-2 text-[12px]">
-                      <button class="font-semibold text-brand-700 hover:underline" @click.stop="download(document)">Download</button>
-                      <button class="font-semibold text-rose-600 hover:underline" @click.stop="remove(document)">Delete</button>
+                      <button class="font-semibold text-brand-700 hover:underline" @click.stop="download(document)">{{ t('patient.docDownload') }}</button>
+                      <button class="font-semibold text-rose-600 hover:underline" @click.stop="remove(document)">{{ t('patient.docDelete') }}</button>
                     </div>
                   </td>
                 </tr>
                 <tr v-if="!documents.length">
-                  <td colspan="5" class="dash-td py-8 text-center text-ink-400">No documents uploaded yet.</td>
+                  <td colspan="5" class="dash-td py-8 text-center text-ink-400">{{ t('patient.noDocuments') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -332,7 +333,7 @@ onUnmounted(() => unsubscribe?.());
             <p v-else>Select a file to preview its extracted text.</p>
           </div>
           <button class="dash-btn mt-4 w-full" :disabled="!pendingCount()" @click="attachAll">
-            {{ pendingCount() ? `Attach ${pendingCount()} value${pendingCount() === 1 ? '' : 's'} to my records` : 'All values attached to my records' }}
+            {{ pendingCount() ? t('patient.attachN', pendingCount()) : t('patient.allAttached') }}
           </button>
           <button
             v-if="selected && selected.processingStatus === 'PROCESSED'"
@@ -353,9 +354,9 @@ onUnmounted(() => unsubscribe?.());
 
         <div v-if="selected?.extractions?.length" class="dash-card dash-card-pad">
           <div class="flex items-center justify-between">
-            <p class="text-sm font-bold text-ink-800">Review extractions</p>
-            <span v-if="pendingCount()" class="chip bg-amber-50 text-amber-700">{{ pendingCount() }} pending</span>
-            <span v-else class="chip bg-brand-50 text-brand-700">All reviewed</span>
+            <p class="text-sm font-bold text-ink-800">{{ t('patient.reviewTitle') }}</p>
+            <span v-if="pendingCount()" class="chip bg-amber-50 text-amber-700">{{ t('patient.nPending', { n: pendingCount() }) }}</span>
+            <span v-else class="chip bg-brand-50 text-brand-700">{{ t('patient.allReviewed') }}</span>
           </div>
           <div class="mt-3 space-y-2">
             <div v-for="item in selected.extractions" :key="item.id" class="rounded-xl border border-ink-200 px-3 py-2">
@@ -365,9 +366,9 @@ onUnmounted(() => unsubscribe?.());
               </div>
               <p class="mt-1 text-[12px] text-ink-600">{{ item.value }}</p>
               <div class="mt-2 flex gap-1.5">
-                <button class="btn-secondary px-2 py-1 text-[10px]" @click="review(item.id, 'CONFIRMED')">Confirm</button>
-                <button class="btn-secondary px-2 py-1 text-[10px]" @click="review(item.id, 'CORRECTED', item.value)">Correct</button>
-                <button class="btn-danger px-2 py-1 text-[10px]" @click="review(item.id, 'REJECTED')">Reject</button>
+                <button class="btn-secondary px-2 py-1 text-[10px]" @click="review(item.id, 'CONFIRMED')">{{ t('patient.actConfirm') }}</button>
+                <button class="btn-secondary px-2 py-1 text-[10px]" @click="review(item.id, 'CORRECTED', item.value)">{{ t('patient.actCorrect') }}</button>
+                <button class="btn-danger px-2 py-1 text-[10px]" @click="review(item.id, 'REJECTED')">{{ t('patient.actReject') }}</button>
               </div>
             </div>
           </div>

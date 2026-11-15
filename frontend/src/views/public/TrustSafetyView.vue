@@ -39,7 +39,7 @@ const controlIcons = [
           <p class="mt-3 text-lg leading-relaxed text-ink-600">{{ t('trust.lead') }}</p>
           <ul class="mt-6 flex flex-wrap gap-2">
             <li
-              v-for="pill in ['Patient-controlled sharing', 'Every access audited', 'Clinician oversight on AI output']"
+              v-for="pill in [t('trust.pill1'), t('trust.pill2'), t('trust.pill3')]"
               :key="pill"
               class="flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-ink-600 shadow-sm"
             >
@@ -66,9 +66,9 @@ const controlIcons = [
     <!-- Controls -->
     <section class="mt-16">
       <div class="flex items-center gap-4">
-        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Controls</h2>
+        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('trust.controls') }}</h2>
         <span class="h-px flex-1 bg-ink-100" />
-        <span class="text-[12px] font-medium text-ink-400">Consent, audit and honest AI limits</span>
+        <span class="text-[12px] font-medium text-ink-400">{{ t('trust.controlsCaption') }}</span>
       </div>
       <div class="mt-6 grid gap-5 md:grid-cols-2">
         <article
@@ -116,7 +116,7 @@ const controlIcons = [
         <div class="flex items-center gap-4">
           <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('trust.indicatorTitle') }}</h2>
           <span class="h-px flex-1 bg-ink-100" />
-          <span class="text-[12px] font-medium text-ink-400">{{ factors.length }} factors · combined into one signal</span>
+          <span class="text-[12px] font-medium text-ink-400">{{ t('trust.factorsCaption', { n: factors.length }) }}</span>
         </div>
         <p class="mt-4 leading-relaxed text-ink-600">{{ t('trust.indicatorBody') }}</p>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import careImage from '@/assets/connected-care.png';
 
@@ -18,11 +19,11 @@ const principles = [
   { key: 'oversight', icon: 'M16 19v-2a4 4 0 00-8 0v2M12 11a3 3 0 100-6 3 3 0 000 6z' },
 ];
 
-const commitments = [
-  'Patient-controlled records — you decide who sees what, and every access is logged.',
-  'Clinician oversight — AI output is always framed as support, never a diagnosis.',
-  'Evidence-linked answers — responses cite the verified records they are based on.',
-];
+const commitments = computed(() => [
+  t('about.commitment1'),
+  t('about.commitment2'),
+  t('about.commitment3'),
+]);
 </script>
 
 <template>
@@ -53,7 +54,7 @@ const commitments = [
             <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
           </svg>
         </span>
-        <h2 class="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Our mission</h2>
+        <h2 class="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('about.missionTitle') }}</h2>
         <p class="mt-3 text-[17px] font-medium leading-relaxed text-ink-800">
           Make authorised health information easier to organise and understand — while keeping qualified
           healthcare professionals at the centre of every decision.
@@ -76,7 +77,7 @@ const commitments = [
             <path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke-linejoin="round" />
           </svg>
         </span>
-        <h2 class="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-terracotta-600">The problems we address</h2>
+        <h2 class="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-terracotta-600">{{ t('about.problemsTitle') }}</h2>
         <ol class="mt-3 divide-y divide-ink-100">
           <li v-for="(problem, index) in problems" :key="problem.title" class="flex gap-4 py-3.5 first:pt-1 last:pb-0">
             <span class="text-[12px] font-bold tabular-nums text-ink-300">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -94,7 +95,7 @@ const commitments = [
       <div class="flex items-center gap-4">
         <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Principles</h2>
         <span class="h-px flex-1 bg-ink-100" />
-        <span class="text-[12px] font-medium text-ink-400">How we build</span>
+        <span class="text-[12px] font-medium text-ink-400">{{ t('about.howWeBuild') }}</span>
       </div>
       <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div

@@ -36,9 +36,9 @@ const solutions = [
     <!-- Capabilities -->
     <div class="mt-14">
       <div class="flex items-center gap-4">
-        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Capabilities</h2>
+        <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('solutions.capabilities') }}</h2>
         <span class="h-px flex-1 bg-ink-100" />
-        <span class="text-[12px] font-medium text-ink-400">{{ solutions.length }} modules · documented limits</span>
+        <span class="text-[12px] font-medium text-ink-400">{{ t('solutions.modulesCaption', { n: solutions.length }) }}</span>
       </div>
 
       <div class="mt-6 grid gap-5 md:grid-cols-2">
