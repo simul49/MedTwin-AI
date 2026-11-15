@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { connect } from '@/api/endpoints';
 import { useRealtime } from '@/composables/useRealtime';
+import IncomingCall from '@/views/shared/IncomingCall.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -264,6 +265,9 @@ onMounted(loadNotifications);
       <footer class="border-t border-ink-200/70 bg-white/60 px-5 py-3.5 sm:px-8">
         <p class="text-[11px] text-ink-400">{{ t('footer.medicalNotice') }}</p>
       </footer>
+
+      <!-- Realtime incoming-call overlay + toast -->
+      <IncomingCall />
     </div>
   </div>
 </template>
