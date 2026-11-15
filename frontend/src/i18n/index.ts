@@ -6,15 +6,16 @@ const STORAGE_KEY = 'medtwin.locale';
 
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'EN' },
+  { code: 'zh', label: '中文' },
 ] as const;
 
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number]['code'];
 
-// The platform is English-only by product decision: no auto-detection from the
-// browser/OS language and no 中文 option — the UI is always English.
+// English is the default; 中文 is available as an explicit choice in the
+// navbar/Settings. No silent auto-switching from the browser/OS language.
 function initialLocale(): LocaleCode {
-  localStorage.removeItem(STORAGE_KEY);
-  return 'en';
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored === 'zh' ? 'zh' : 'en';
 }
 
 export const i18n = createI18n({

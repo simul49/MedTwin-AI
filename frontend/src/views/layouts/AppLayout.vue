@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { connect } from '@/api/endpoints';
@@ -129,6 +130,11 @@ async function signOut() {
   router.push('/');
 }
 
+function pickLocale(code: LocaleCode) {
+  ui.setLocale(code);
+  langOpen.value = false;
+}
+
 onMounted(loadNotifications);
 </script>
 
@@ -203,7 +209,24 @@ onMounted(loadNotifications);
         </div>
 
         <div class="flex items-center gap-2">
-          <span class="btn-secondary pointer-events-none px-3 py-2 text-xs" title="English">EN</span>
+          <div class="relative">
+            <button class="btn-secondary px-3 py-2 text-xs" :aria-expanded="langOpen" @click="langOpen = !langOpen">
+              {{ ui.locale === 'zh' ? '中文' : 'EN' }} <span aria-hidden="true">▾</span>
+            </button>
+            <Transition name="pop">
+              <div v-if="langOpen" class="absolute right-0 mt-2 w-28 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-card">
+                <button
+                  v-for="option in SUPPORTED_LOCALES"
+                  :key="option.code"
+                  class="block w-full px-3 py-2 text-left text-sm hover:bg-ink-100"
+                  :class="ui.locale === option.code ? 'font-semibold text-brand-700' : 'text-ink-700'"
+                  @click="pickLocale(option.code)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </Transition>
+          </div>
 
           <RouterLink :to="notificationsPath" class="btn-ghost relative px-2 py-2" :aria-label="t('patient.navNotifications')">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
