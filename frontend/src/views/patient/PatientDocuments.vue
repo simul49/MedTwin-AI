@@ -169,6 +169,10 @@ onMounted(load);
                     <span class="chip" :class="document.processingStatus === 'PROCESSED' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'">
                       {{ statusText(document.processingStatus) }}
                     </span>
+                    <p v-if="document.processingStatus === 'FAILED' && document.processingError"
+                       class="mt-1 max-w-[220px] text-[10px] leading-snug text-amber-700">
+                      {{ document.processingError }}
+                    </p>
                   </td>
                   <td class="dash-td">
                     <div class="flex gap-2 text-[12px]">
@@ -212,6 +216,17 @@ onMounted(load);
               Uploaded: {{ formatDateTime(selected.createdAt) }}<br />
               Pages: {{ selected.pageCount ?? '—' }}<br />
               Status: {{ statusText(selected.processingStatus) }}
+              <template v-if="selected.processingError">
+                <br />
+                Reason: {{ selected.processingError }}
+              </template>
+              <span
+                v-if="selected.processingStatus === 'FAILED' && (selected.processingError || '').includes('No text layer')"
+                class="mt-2 block rounded-lg border border-amber-200 bg-amber-50 p-2 font-sans text-[11px] leading-snug text-amber-800"
+              >
+                This document is a scan (images only), so there is no machine-readable text to extract. Upload the
+                original digital PDF or an export with selectable text — the platform does not run OCR on scanned images.
+              </span>
             </p>
             <p v-else>Select a file to preview its extracted text.</p>
           </div>
