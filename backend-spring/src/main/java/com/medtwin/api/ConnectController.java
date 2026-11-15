@@ -84,22 +84,36 @@ public class ConnectController {
         return J.map("id", id, "title", J.sn(row.get("title")), "messages", messages);
     }
 
+    private static final long MAX_ATTACHMENT_BYTES = 8L * 1024 * 1024;
+
+    @SuppressWarnings("unchecked")
     @PostMapping("/conversations/{id}/")
     public ResponseEntity<Object> sendMessage(@PathVariable String id,
                                               @RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> payload = body == null ? new LinkedHashMap<>() : body;
         Map<String, Object> conversation = visibleConversation(id);
-        String text = J.gs(body, "body").trim();
-        if (text.isEmpty()) throw ApiError.bad("Write a message first.");
+        String text = J.gs(payload, "body").trim();
+        Map<String, Object> att = payload.get("attachment") instanceof Map<?, ?> a
+                ? (Map<String, Object>) a : null;
+        if (text.isEmpty() && att == null) throw ApiError.bad("Write a message or attach a file first.");
+        String attachmentsJson = att == null ? null : validateAttachment(att);
         Principal user = Ctx.user();
         if (user.role.equals("DOCTOR") && !access.grantIsLive(
                 access.activeGrant(user.id, J.s(conversation.get("patient_id"))))) {
             throw new ApiError(403, "Your access to this patient is no longer active.");
         }
         String messageId = J.uuid();
-        db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
-                        + "created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
-                text.substring(0, Math.min(4000, text.length())), J.ts());
+        if (attachmentsJson == null) {
+            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
+                            + "created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
+                    text.substring(0, Math.min(4000, text.length())), J.ts());
+        } else {
+            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
+                            + "attachments, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
+                    text.substring(0, Math.min(4000, text.length())), attachmentsJson, J.ts());
+        }
         db.exec("UPDATE conversations SET updated_at = ? WHERE id = ?", J.ts(), id);
         Map<String, Object> message = Views.message(db,
                 db.require("SELECT * FROM messages WHERE id = ?", messageId));
@@ -113,6 +127,30 @@ public class ConnectController {
                     "message", message));
         }
         return ResponseEntity.status(201).body(message);
+    }
+
+    /** Validate and wrap a single attachment as a JSON array for storage. */
+    private String validateAttachment(Map<String, Object> att) {
+        String name = J.gs(att, "name").trim();
+        String type = J.gs(att, "type").trim().toLowerCase();
+        String data = J.gs(att, "data").trim();
+        if (name.isEmpty() || data.isEmpty()) throw ApiError.bad("The attached file is missing its name or content.");
+        if (!data.startsWith("data:")) throw ApiError.bad("Unsupported attachment encoding.");
+        boolean allowed = type.startsWith("image/") || type.startsWith("video/")
+                || type.startsWith("audio/") || type.equals("application/pdf") || type.startsWith("text/");
+        if (!allowed) throw ApiError.bad("This file type cannot be sent in messages. Images, video, audio, PDF and text files are supported.");
+        long size = att.get("size") instanceof Number n ? n.longValue() : data.length();
+        if (size > MAX_ATTACHMENT_BYTES) throw ApiError.bad("Attachment is too large — the maximum is 8 MB.");
+        Map<String, Object> stored = new LinkedHashMap<>();
+        stored.put("name", name.substring(0, Math.min(180, name.length())));
+        stored.put("type", type);
+        stored.put("size", size);
+        stored.put("data", data);
+        try {
+            return J.JSON.writeValueAsString(List.of(stored));
+        } catch (Exception ignored) {
+            throw ApiError.bad("The attachment could not be processed.");
+        }
     }
 
     private Map<String, Object> visibleConversation(String id) {

@@ -282,10 +282,20 @@ public final class Views {
             Map<String, Object> sender = db.one("SELECT name FROM users WHERE id = ?", senderId);
             senderName = sender == null ? "" : J.s(sender.get("name"));
         }
+        // MySQL returns the JSON column as a String — parse it into a real array.
+        Object attachments = r.get("attachments");
+        if (attachments instanceof String s && !s.isBlank()) {
+            try {
+                attachments = J.JSON.readValue(s, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            } catch (Exception ignored) {
+                attachments = null;
+            }
+        }
         return J.map(
                 "id", J.s(r.get("id")),
                 "role", J.s(r.get("role")),
                 "body", J.s(r.get("body")),
+                "attachments", attachments,
                 "senderId", J.sn(r.get("sender_id")),
                 "senderName", senderName,
                 "createdAt", J.iso(r.get("created_at")),

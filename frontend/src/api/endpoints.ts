@@ -144,7 +144,8 @@ export const connect = {
   startConversation: (doctorId: string) => api.post<Conversation>('/conversations/', { doctorId }),
   messages: (id: string) =>
     api.get<{ id: string; title: string | null; messages: ChatMessage[] }>(`/conversations/${id}/`),
-  sendMessage: (id: string, body: string) => api.post<ChatMessage>(`/conversations/${id}/`, { body }),
+  sendMessage: (id: string, body: string, attachment?: { name: string; type: string; size: number; data: string }) =>
+    api.post<ChatMessage>(`/conversations/${id}/`, attachment ? { body, attachment } : { body }),
   appointments: () => list<Appointment>('/appointments/'),
   createAppointment: (payload: { doctorId: string; scheduledAt: string; reason?: string; durationMin?: number }) =>
     api.post<Appointment>('/appointments/', payload),

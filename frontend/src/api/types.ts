@@ -203,10 +203,18 @@ export interface ChatResponse {
   model: { name: string; version: string; mode: string; generationMode: string; latencyMs: number };
 }
 
+export interface MessageAttachment {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'USER' | 'AI' | 'DOCTOR' | 'SYSTEM';
   body: string;
+  attachments?: MessageAttachment[] | null;
   senderId: string | null;
   senderName?: string;
   createdAt: string | null;
