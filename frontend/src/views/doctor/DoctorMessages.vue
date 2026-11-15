@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { connect, consultations } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
+import { useRealtime } from '@/composables/useRealtime';
 import type { ChatMessage, Conversation, MessageAttachment } from '@/api/types';
 
 const { t } = useI18n();
@@ -215,17 +216,34 @@ async function startVideoCall() {
 }
 
 const callNotice = ref<string | null>(null);
+let unsubscribe: (() => void) | null = null;
 
 onMounted(async () => {
   conversations.value = (await connect.conversations()).results;
   if (conversations.value.length) await select(conversations.value[0]);
+  // Real-time messages arrive over the WebSocket; the poller stays as a fallback.
+  const realtime = useRealtime();
+  realtime.connect();
+  unsubscribe = realtime.on('message', (payload) => {
+    const conversationId = String(payload.conversationId ?? '');
+    const message = payload.message as ChatMessage | undefined;
+    if (!message) return;
+    if (active.value && conversationId === active.value.id) {
+      if (!messages.value.some((m) => m.id === message.id)) {
+        messages.value.push(message);
+        void scroll();
+      }
+    }
+    void connect.conversations().then((r) => { conversations.value = r.results; });
+  });
   timer = window.setInterval(async () => {
     if (active.value) messages.value = (await connect.messages(active.value.id)).messages;
-  }, 10000);
+  }, 30000);
 });
 
 onUnmounted(() => {
   timer && window.clearInterval(timer);
+  unsubscribe?.();
   if (recording.value) mediaRecorder?.stop();
 });
 </script>
