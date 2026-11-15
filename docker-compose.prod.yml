@@ -1,0 +1,73 @@
+# MedTwin AI — full production stack (database + API + AI service + web).
+#
+#   cp docker/.env.example .env   # fill in the values
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# The web container publishes port 80 (and 443 if you mount certs).
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: medtwin
+    volumes:
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  spring:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.spring
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/medtwin?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MEDTWIN_AI_SERVICE_URL: http://ai:8002
+      MEDTWIN_UPLOAD_DIR: /var/medtwin/documents
+      MEDTWIN_CORS_ORIGINS: ${PUBLIC_URL}
+    volumes:
+      - documents:/var/medtwin/documents
+
+  ai:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ai
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_NAME: medtwin
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DJANGO_ALLOWED_HOSTS: "*"
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_URL}
+      MEDTWIN_DOCUMENT_ROOT: /var/medtwin/documents
+    volumes:
+      - documents:/var/medtwin/documents
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    restart: unless-stopped
+    depends_on:
+      - spring
+      - ai
+    ports:
+      - "80:80"
+
+volumes:
+  mysqldata:
+  documents:

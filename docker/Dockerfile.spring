@@ -1,0 +1,12 @@
+# MedTwin Spring Boot API (auth, RBAC, consultations, payments, realtime)
+FROM gradle:8.10-jdk21 AS build
+WORKDIR /src
+COPY backend-spring/ .
+RUN gradle bootJar --no-daemon -x test
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /src/build/libs/*.jar app.jar
+RUN mkdir -p /var/medtwin/documents
+EXPOSE 8001
+ENTRYPOINT ["java", "-jar", "app.jar"]
