@@ -209,6 +209,8 @@ onUnmounted(() => unsubscribe?.());
     </div>
 
     <div class="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
+      <!-- Left column: patient list + real-time data entry -->
+      <div class="space-y-4">
       <!-- Patient list -->
       <div class="dash-card overflow-hidden">
         <div class="border-b border-ink-100 p-5">
@@ -279,7 +281,7 @@ onUnmounted(() => unsubscribe?.());
       </div>
 
       <!-- Real-time data entry -->
-      <div class="dash-card mt-4 overflow-hidden">
+      <div class="dash-card overflow-hidden">
         <div class="flex items-center justify-between border-b border-ink-100 px-5 py-4">
           <div class="flex items-center gap-3">
             <span class="dash-icon-tile">
@@ -332,6 +334,7 @@ onUnmounted(() => unsubscribe?.());
             Values are flagged automatically against the reference range and pushed to the patient over WebSocket.
           </p>
         </div>
+      </div>
       </div>
 
       <!-- Clinical panels -->
