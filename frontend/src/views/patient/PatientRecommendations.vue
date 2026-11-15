@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { ai } from '@/api/endpoints';
+import { ai, patient } from '@/api/endpoints';
 import type { Recommendation } from '@/api/types';
 
 const { t } = useI18n();
@@ -14,6 +14,10 @@ const busy = ref<string | null>(null);
 const kept = ref(0);
 const dismissed = ref(0);
 const copiedId = ref<string | null>(null);
+const recordCount = ref<number | null>(null);
+
+/** A brand-new account (no health records yet) gets onboarding instead of recommendations. */
+const isNewUser = computed(() => recordCount.value === 0);
 
 const totalLoaded = ref(0);
 const handled = computed(() => kept.value + dismissed.value);
@@ -129,8 +133,10 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
-    items.value = (await ai.recommendations()).results;
+    const [recs, records] = await Promise.all([ai.recommendations(), patient.records({})]);
+    items.value = recs.results;
     totalLoaded.value = items.value.length;
+    recordCount.value = records.results.length;
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -160,14 +166,51 @@ onMounted(load);
   <div>
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="dash-kicker mb-1.5">Personalised guidance</p>
+        <p class="dash-kicker mb-1.5">{{ isNewUser ? 'Getting started' : 'Personalised guidance' }}</p>
         <h1 class="text-[26px] font-bold leading-tight tracking-tight text-ink-900">{{ t('patient.recommendationsTitle') }}</h1>
-        <p class="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink-500">{{ t('patient.recommendationsHint') }}</p>
+        <p class="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink-500">
+          {{ isNewUser
+            ? 'Welcome! Your personalised guidance will appear here once your Digital Twin has some data.'
+            : t('patient.recommendationsHint')
+          }}
+        </p>
       </div>
-      <span class="chip border border-ink-200 bg-white text-ink-600">{{ items.length }} suggestions</span>
+      <span v-if="isNewUser" class="chip bg-brand-50 font-semibold text-brand-700">New account</span>
+      <span v-else class="chip border border-ink-200 bg-white text-ink-600">{{ items.length }} suggestions</span>
     </div>
 
-    <div class="dash-info mb-4">
+    <!-- Brand-new users: onboarding instead of recommendations -->
+    <div v-if="!loading && isNewUser" class="dash-card overflow-hidden">
+      <div class="flex flex-col items-center px-6 py-12 text-center">
+        <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M12 3l2.6 5.6 6.1.8-4.5 4.3 1.1 6-5.3-3-5.3 3 1.1-6L3.3 9.4l6.1-.8z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <p class="mt-4 text-[17px] font-bold text-ink-900">Welcome to your Digital Twin 🎉</p>
+        <p class="mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
+          Personalised guidance is generated from <span class="font-semibold text-ink-700">your own records</span> — conditions, medications, lab results and measurements. Add your first record and suggestions will start appearing here.
+        </p>
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          <RouterLink to="/patient/records" class="dash-btn px-4 py-2 text-xs">
+            <svg class="mr-1 inline-block h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+            Add your first record
+          </RouterLink>
+          <RouterLink to="/patient/assistant" class="btn-secondary px-4 py-2 text-xs">Explore the AI assistant</RouterLink>
+          <RouterLink to="/patient/appointments" class="btn-ghost px-4 py-2 text-xs">Request an appointment</RouterLink>
+        </div>
+        <div class="mt-6 flex items-start gap-1.5 border-t border-ink-100 pt-4 text-[11px] text-ink-400">
+          <svg class="mt-0.5 h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 8v5m0 3v.5M12 3a9 9 0 100 18 9 9 0 000-18z" stroke-linecap="round" />
+          </svg>
+          Everything stays private — nothing is shared with any clinician until you grant consent.
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="dash-info mb-4">
       These are educational prompts derived from your own records — not medical advice. Keep what is useful and dismiss anything that does not apply.
     </div>
 
@@ -175,7 +218,7 @@ onMounted(load);
 
     <div v-else-if="loading" class="shimmer h-48 animate-pulse rounded-2xl bg-ink-100" />
 
-    <div v-else-if="!items.length && !handled" class="dash-card px-5 py-14 text-center">
+    <div v-else-if="!items.length && !handled && !isNewUser" class="dash-card px-5 py-14 text-center">
       <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
         <svg class="h-5 w-5 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
@@ -185,7 +228,7 @@ onMounted(load);
       <p class="mt-1 text-[12px] text-ink-400">Suggestions appear as new records and measurements are added.</p>
     </div>
 
-    <template v-else>
+    <template v-else-if="!isNewUser">
       <!-- Progress strip -->
       <div v-if="totalLoaded" class="dash-card mb-5 px-4 py-3">
         <div class="flex flex-wrap items-center justify-between gap-2.5">
