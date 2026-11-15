@@ -12,6 +12,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Allow cloudflared quick-tunnel hosts (URL changes on each restart).
+    allowedHosts: true,
     proxy: {
       // First-party API calls to Spring Boot :8001; cookies stay same-site and CSRF works normally.
       '/api': {
