@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useUiStore } from '@/stores/ui';
 import { connect } from '@/api/endpoints';
+import { useRealtime } from '@/composables/useRealtime';
 import { formatDateTime } from '@/composables/useAsync';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import type { NotificationItem } from '@/api/types';
@@ -87,7 +88,17 @@ async function markAll() {
   await load();
 }
 
-onMounted(load);
+// Live: new notifications (e.g. consultation payments) arrive over WebSocket.
+const realtime = useRealtime();
+let unsubscribe: (() => void) | null = null;
+
+onMounted(() => {
+  void load();
+  realtime.connect();
+  unsubscribe = realtime.on('notification', () => void load());
+});
+
+onUnmounted(() => unsubscribe?.());
 </script>
 
 <template>

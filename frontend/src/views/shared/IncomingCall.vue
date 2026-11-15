@@ -16,7 +16,6 @@ const callerName = ref('');
 const toast = ref<string | null>(null);
 
 let offUpdate: (() => void) | null = null;
-let offNotification: (() => void) | null = null;
 let audioCtx: AudioContext | null = null;
 let ringTimer: number | undefined;
 let toastTimer: number | undefined;
@@ -82,31 +81,13 @@ onMounted(() => {
       showToast('Your clinician has joined the room — open Consultations to enter the call.');
     }
   });
-  offNotification = realtime.on('notification', (payload) => {
-    const n = payload.notification as { type?: string; title?: string; body?: string } | undefined;
-    if (!n) return;
-    if (auth.isDoctor && n.type === 'PAYMENT_RECEIVED') {
-      showToast(`${n.title} — ${n.body ?? ''}`.trim());
-    }
-    if (auth.isDoctor && n.type === 'CONSULTATION_REQUEST') {
-      showToast(`${n.title} — ${n.body ?? ''}`.trim());
-    }
-    if (auth.isDoctor && n.type === 'CONSENT_REQUEST') {
-      showToast(`${n.title} — ${n.body ?? ''}`.trim());
-    }
-    if (auth.isPatient && n.type === 'CONSENT_GRANTED') {
-      showToast(`${n.title} — ${n.body ?? ''}`.trim());
-    }
-    if (auth.isPatient && n.type === 'CONSULTATION_UPDATE') {
-      showToast(`${n.title} — ${n.body ?? ''}`.trim());
-    }
-  });
+  // Generic notification toasts render globally in App.vue; this component
+  // only handles call-specific UX (ringing overlay, joined-room hint).
   realtime.connect();
 });
 
 onUnmounted(() => {
   offUpdate?.();
-  offNotification?.();
   stopRing();
   if (toastTimer) window.clearTimeout(toastTimer);
 });

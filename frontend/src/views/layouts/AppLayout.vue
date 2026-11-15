@@ -117,7 +117,11 @@ onMounted(() => {
   loadNotifications();
   if (auth.user) {
     realtime.connect();
-    unsubscribe = realtime.on('notification', () => loadNotifications());
+    unsubscribe = realtime.on('notification', (payload) => {
+      loadNotifications();
+      const n = (payload.notification ?? {}) as { title?: string; body?: string };
+      if (n.title) ui.notify(n.body ? `${n.title} — ${n.body}` : n.title, 'success');
+    });
   }
 });
 
