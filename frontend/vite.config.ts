@@ -11,6 +11,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   plugins: [vue()],
+  css: {
+    // Vite searches for postcss.config.js from the project root, which is the
+    // repo root now — point it back at the frontend folder explicitly.
+    postcss: fileURLToPath(new URL('./postcss.config.js', import.meta.url)),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
