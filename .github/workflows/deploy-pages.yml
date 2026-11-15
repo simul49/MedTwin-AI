@@ -30,16 +30,32 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Typecheck
+        shell: bash
+        run: set -o pipefail && npx vue-tsc --noEmit 2>&1 | tee /tmp/step-typecheck.log
+        working-directory: frontend
+
       - name: Build
-        run: npm run build
+        shell: bash
+        run: set -o pipefail && npx vite build 2>&1 | tee /tmp/step-build.log
         working-directory: frontend
 
       # SPA fallback: serve index.html for unknown routes (vue-router history mode)
       - name: Add 404 fallback
+        if: success()
         run: cp dist/index.html dist/404.html
         working-directory: frontend
 
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: /tmp/step-*.log
+          if-no-files-found: ignore
+
       - uses: actions/upload-pages-artifact@v3
+        if: success()
         with:
           path: frontend/dist
 
