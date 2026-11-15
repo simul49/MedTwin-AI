@@ -236,7 +236,15 @@ onMounted(load);
                 {{ selected.processingError }}
               </template>
               <span
-                v-if="selected.processingStatus === 'FAILED' && (selected.processingError || '').includes('No text layer')"
+                v-if="selected.processingStatus === 'PROCESSED'"
+                class="mt-2 block rounded-lg border border-sky-200 bg-sky-50 p-2 font-sans text-[11px] leading-snug text-sky-800"
+              >
+                Extraction succeeded, but no recognizable medical values (e.g. HbA1c, blood pressure, glucose,
+                weight or height) were found in this document — so there is nothing to review or attach. The
+                extracted text itself is stored and searchable.
+              </span>
+              <span
+                v-else-if="selected.processingStatus === 'FAILED' && (selected.processingError || '').includes('No text layer')"
                 class="mt-2 block rounded-lg border border-amber-200 bg-amber-50 p-2 font-sans text-[11px] leading-snug text-amber-800"
               >
                 This document is a scan (images only) and OCR is unavailable on the server right now. Upload the
@@ -248,6 +256,13 @@ onMounted(load);
           <button class="dash-btn mt-4 w-full" :disabled="!selected?.extractions?.length" @click="attachAll">
             Attach document to your digital twin records
           </button>
+          <p
+            v-if="selected && !selected?.extractions?.length && selected.processingStatus === 'PROCESSED'"
+            class="mt-2 text-center text-[11px] text-ink-400"
+          >
+            Attaching becomes available once medical values are detected — try uploading a lab report with
+            quantities like HbA1c, blood pressure or weight.
+          </p>
           <p v-if="attachedMsg" class="mt-2 text-center text-[11px] font-semibold text-brand-700">{{ attachedMsg }}</p>
         </div>
 

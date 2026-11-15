@@ -119,27 +119,19 @@ def sha256_of(path: Path) -> str:
 
 
 def extract_text(path: Path, mime_type: str) -> Tuple[str, int, str]:
-    """Return ``(text, page_count, error)``."""
-    try:
-        if mime_type == "application/pdf":
-            from pypdf import PdfReader
+    """Backwards-compatible wrapper returning ``(text, page_count, error)``."""
+    text, page_count, error, _method = extract_text_full(path, mime_type)
+    return text, page_count, error
 
-            reader = PdfReader(str(path))
-            pages = []
-            for page in reader.pages[:40]:
-                pages.append(page.extract_text() or "")
-            text = "\n".join(pages).strip()
-            if not text:
-                return "", len(reader.pages), "No text layer found in this PDF (likely a scan)."
-            return text, len(reader.pages), ""
 
-        if mime_type in {"image/png", "image/jpeg"}:
-            return "", 1, NOTE_NO_OCR
-
-        return "", 0, f"Unsupported type for extraction: {mime_type}"
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning("extraction failed for %s: %s", path, exc)
-        return "", 0, f"Extraction failed: {exc}"
+def _candidate(field_name: str, label: str, value: str, confidence: float, evidence: str) -> Dict:
+    return {
+        "field_name": field_name,
+        "label": label,
+        "value": value.replace(",", "."),
+        "confidence": confidence,
+        "evidence": evidence[:400],
+    }
 
 
 def derive_fields(text: str) -> List[Dict]:
@@ -156,12 +148,39 @@ def derive_fields(text: str) -> List[Dict]:
         value = "/".join(groups) if field_name == "blood_pressure" else groups[0]
         start = max(0, match.start() - 30)
         found.append(
-            {
-                "field_name": field_name,
-                "label": label,
-                "value": value.replace(",", "."),
-                "confidence": confidence,
-                "evidence": text[start : match.end() + 30].replace("\n", " ")[:400],
-            }
+            _candidate(
+                field_name, label, value, confidence,
+                text[start : match.end() + 30].replace("\n", " "),
+            )
         )
+
+    # Imperial-unit variants common in US reports and OCR output
+    # ("Weight: 64 Ibs", "Height: 4'4\"") — converted to metric alongside.
+    if not any(f["field_name"] == "weight" for f in found):
+        m = re.search(r"\bweight\D{0,10}(\d{2,3})\s*(?:[i1l]bs?|pounds?)\b", text, re.IGNORECASE)
+        if m:
+            lbs = int(m.group(1))
+            kg = round(lbs * 0.4536)
+            start = max(0, m.start() - 30)
+            found.append(_candidate(
+                "weight", "Weight", f"{lbs} lbs ({kg} kg)", 0.55,
+                text[start : m.end() + 30].replace("\n", " "),
+            ))
+
+    if not any(f["field_name"] == "height" for f in found):
+        m = re.search(
+            r"\bheight\D{0,10}(\d{1,2})\s*(?:'|’|ft)\s*(\d{1,2})?\s*(?:\"|”|''|in\b)?",
+            text, re.IGNORECASE,
+        )
+        if m:
+            feet = int(m.group(1))
+            inches = int(m.group(2) or 0)
+            cm = round((feet * 12 + inches) * 2.54)
+            label_val = f"{feet}'{inches}\" ({cm} cm)"
+            start = max(0, m.start() - 30)
+            found.append(_candidate(
+                "height", "Height", label_val, 0.55,
+                text[start : m.end() + 30].replace("\n", " "),
+            ))
+
     return found
