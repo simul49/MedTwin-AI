@@ -94,7 +94,7 @@ const vitals = computed<Vital[]>(() => {
   const heart = findObs('heart', 'pulse');
   const bp = findObs('systolic', 'blood pressure');
   const spo2 = findObs('spo2', 'oxygen');
-  const glucose = findObs('glucose', 'hba1c');
+  const glucose = findObs('blood glucose', 'fasting glucose') ?? findObs('hba1c');
   const hrv = findObs('hrv', 'variability');
   const list: Vital[] = [
     vitalFrom(heart, {
