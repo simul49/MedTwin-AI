@@ -151,12 +151,16 @@ public class ConsultationController {
         if (!status.equals("PAID") && !status.equals("WAITING_ROOM") && !status.equals("LIVE")) {
             throw ApiError.bad("Complete the payment before entering the consultation room.");
         }
-        // Room validity window: reject late joins even before the sweep runs.
-        Object createdAt = row.get("created_at");
-        if (!status.equals("LIVE") && createdAt instanceof Timestamp ts
-                && ts.before(Timestamp.valueOf(LocalDateTime.now().minusMinutes(ROOM_VALIDITY_MINUTES)))) {
-            db.exec("UPDATE consultations SET status = 'EXPIRED' WHERE id = ? AND status IN ('PAID', 'WAITING_ROOM')", id);
-            throw ApiError.bad("This consultation room has expired. Book a new consultation to talk to your clinician.");
+        // Room validity window (database clock): mark past-window rows before
+        // allowing the join so a not-yet-swept row cannot slip through.
+        if (!status.equals("LIVE")) {
+            db.exec("UPDATE consultations SET status = 'EXPIRED' "
+                    + "WHERE id = ? AND status IN ('PAID', 'WAITING_ROOM') "
+                    + "AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)", id, ROOM_VALIDITY_MINUTES);
+            row = visible(id);
+            if (J.s(row.get("status")).equals("EXPIRED")) {
+                throw ApiError.bad("This consultation room has expired. Book a new consultation to talk to your clinician.");
+            }
         }
         String roomCode = J.s(row.get("room_code"));
         if (roomCode == null || roomCode.isBlank()) {
@@ -247,6 +251,28 @@ public class ConsultationController {
         return code.toString();
     }
 
+    /** Minutes left before the room closes (null for ended consultations). */
+    private Integer roomMinutesLeft(Map<String, Object> row) {
+        String status = J.s(row.get("status"));
+        if (!List.of("PAID", "WAITING_ROOM", "LIVE").contains(status)) return null;
+        // Computed with the database clock so JVM/DB timezone differences
+        // cannot skew the countdown.
+        Map<String, Object> t = db.one(
+                "SELECT GREATEST(0, TIMESTAMPDIFF(MINUTE, NOW(), "
+                + "DATE_ADD(created_at, INTERVAL ? MINUTE))) AS minutes_left "
+                + "FROM consultations WHERE id = ?",
+                ROOM_VALIDITY_MINUTES, J.s(row.get("id")));
+        if (t == null || t.get("minutes_left") == null) return null;
+        return ((Number) t.get("minutes_left")).intValue();
+    }
+
+    /** DATETIME columns arrive as Timestamp or LocalDateTime depending on the driver. */
+    private static LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof Timestamp t) return t.toLocalDateTime();
+        if (value instanceof LocalDateTime l) return l;
+        return null;
+    }
+
     private Map<String, Object> view(Map<String, Object> row) {
         Map<String, Object> doctor = db.one("SELECT id, name, avatar_color FROM users "
                 + "WHERE id = ?", J.s(row.get("doctor_id")));
@@ -266,6 +292,7 @@ public class ConsultationController {
                 "endedAt", J.iso(row.get("ended_at")),
                 "prescriptionNote", row.get("prescription_note"),
                 "createdAt", J.iso(row.get("created_at")),
+                "roomMinutesLeft", roomMinutesLeft(row),
                 "doctor", doctor == null ? null : J.map(
                         "id", doctor.get("id"), "name", doctor.get("name"),
                         "avatarColor", doctor.get("avatar_color")),

@@ -39,6 +39,14 @@ function openCheckout(item: Consultation) {
   card.value = { cardNumber: '', cardName: '', expiry: '', cvc: '' };
 }
 
+/** Human-readable time remaining before the room closes, e.g. "1h 23m". */
+function roomTimeLeft(item: Consultation): string | null {
+  const minutes = item.roomMinutesLeft ?? 0;
+  if (minutes <= 0) return null;
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
 async function submitPayment() {
   if (!payFor.value) return;
   processing.value = true;
@@ -153,6 +161,12 @@ onMounted(load);
             <button v-if="['PAYMENT_PENDING', 'SCHEDULED'].includes(item.status)" class="dash-btn px-3 py-1.5 text-xs" @click="openCheckout(item)">
               Pay {{ item.feeCurrency }} {{ item.feeAmount }}
             </button>
+            <span
+              v-if="['PAID', 'WAITING_ROOM'].includes(item.status) && roomTimeLeft(item)"
+              class="hidden text-[10.5px] font-medium tabular-nums text-ink-400 md:inline"
+            >
+              room open · {{ roomTimeLeft(item) }} left
+            </span>
             <RouterLink
               v-if="['PAID', 'WAITING_ROOM', 'LIVE'].includes(item.status)"
               :to="`/patient/consultations/${item.id}`"
@@ -160,6 +174,14 @@ onMounted(load);
             >
               {{ item.status === 'LIVE' ? 'Join call' : 'Enter room' }} →
             </RouterLink>
+            <button
+              v-if="item.status === 'EXPIRED'"
+              disabled
+              class="btn-secondary cursor-not-allowed px-3 py-1.5 text-xs opacity-60"
+              :title="`Room closed — the booking window ended`"
+            >
+              Room closed
+            </button>
             <RouterLink
               v-if="item.status === 'COMPLETED' && item.prescriptionNote"
               :to="`/patient/consultations/${item.id}`"

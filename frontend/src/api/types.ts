@@ -335,7 +335,8 @@ export type ConsultationStatus =
   | 'WAITING_ROOM'
   | 'LIVE'
   | 'COMPLETED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 export interface Consultation {
   id: string;
@@ -348,6 +349,7 @@ export interface Consultation {
   endedAt: string | null;
   prescriptionNote: string | null;
   createdAt: string | null;
+  roomMinutesLeft: number | null;
   doctor: { id: string; name: string; avatarColor: string } | null;
   patient: { id: string; name: string; avatarColor: string } | null;
   payment: {

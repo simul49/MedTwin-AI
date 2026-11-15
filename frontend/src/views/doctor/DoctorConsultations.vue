@@ -99,6 +99,14 @@ onMounted(load);
             >
               {{ item.status === 'LIVE' ? 'Join call' : 'Enter room' }} →
             </RouterLink>
+            <button
+              v-if="item.status === 'EXPIRED'"
+              disabled
+              class="btn-secondary cursor-not-allowed px-3 py-1.5 text-xs opacity-60"
+              title="Room closed — the booking window ended"
+            >
+              Room closed
+            </button>
             <span v-if="item.prescriptionNote" class="text-[11px] text-ink-400">✓ prescription sent</span>
           </div>
         </li>
