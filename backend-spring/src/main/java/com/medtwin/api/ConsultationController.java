@@ -33,7 +33,7 @@ public class ConsultationController {
     private void expireStale() {
         db.exec("UPDATE consultations SET status = 'EXPIRED' "
                 + "WHERE status IN ('PAID', 'WAITING_ROOM') "
-                + "AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)", ROOM_VALIDITY_MINUTES);
+                + "AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? MINUTE)", ROOM_VALIDITY_MINUTES);
     }
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -156,7 +156,7 @@ public class ConsultationController {
         if (!status.equals("LIVE")) {
             db.exec("UPDATE consultations SET status = 'EXPIRED' "
                     + "WHERE id = ? AND status IN ('PAID', 'WAITING_ROOM') "
-                    + "AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)", id, ROOM_VALIDITY_MINUTES);
+                    + "AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? MINUTE)", id, ROOM_VALIDITY_MINUTES);
             row = visible(id);
             if (J.s(row.get("status")).equals("EXPIRED")) {
                 throw ApiError.bad("This consultation room has expired. Book a new consultation to talk to your clinician.");
@@ -258,7 +258,7 @@ public class ConsultationController {
         // Computed with the database clock so JVM/DB timezone differences
         // cannot skew the countdown.
         Map<String, Object> t = db.one(
-                "SELECT GREATEST(0, TIMESTAMPDIFF(MINUTE, NOW(), "
+                "SELECT GREATEST(0, TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), "
                 + "DATE_ADD(created_at, INTERVAL ? MINUTE))) AS minutes_left "
                 + "FROM consultations WHERE id = ?",
                 ROOM_VALIDITY_MINUTES, J.s(row.get("id")));

@@ -6,7 +6,7 @@ import { connect } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
 import { useRealtime } from '@/composables/useRealtime';
 import { useRouter } from 'vue-router';
-import { consultations } from '@/api/endpoints';
+import { consultations, payments } from '@/api/endpoints';
 import type { ChatMessage, Conversation, MessageAttachment } from '@/api/types';
 
 const { t } = useI18n();
@@ -226,7 +226,7 @@ async function toggleRecording() {
   recordTimer = window.setInterval(() => { recordSeconds.value += 1; }, 1000);
 }
 
-/** Join the active consultation room with this counterpart, or open the list. */
+/** Join the open consultation room, or offer to book + pay for one in-chat. */
 async function startVideoCall() {
   if (!active.value) return;
   try {
@@ -236,11 +236,46 @@ async function startVideoCall() {
       const other = c.doctor?.id === counterpartId || c.patient?.id === counterpartId;
       return other && ['PAID', 'WAITING_ROOM', 'LIVE'].includes(c.status) && (c.roomMinutesLeft ?? 0) > 0;
     });
-    const base = auth.isDoctor ? '/doctor/consultations' : '/patient/consultations';
-    if (room) await router.push(`${base}/${room.id}`);
-    else await router.push(base);
+    if (room) {
+      await router.push(`/patient/consultations/${room.id}`);
+      return;
+    }
+    // No open room — offer to start one right here (booking + payment dialog).
+    callError.value = null;
+    payingCall.value = false;
+    callDialog.value = true;
   } catch {
-    await router.push(auth.isDoctor ? '/doctor/consultations' : '/patient/consultations');
+    callError.value = 'The consultation list could not be loaded. Try again shortly.';
+    callDialog.value = true;
+  }
+}
+
+// --- In-chat video call booking & payment ------------------------------------
+
+const callDialog = ref(false);
+const callError = ref<string | null>(null);
+const payingCall = ref(false);
+const card = ref({ number: '4111 1111 1111 1111', name: '', expiry: '12/29', cvc: '123' });
+
+async function confirmCall() {
+  if (!active.value?.counterpart?.id) return;
+  payingCall.value = true;
+  callError.value = null;
+  try {
+    const created = await consultations.create({ doctorId: active.value.counterpart.id });
+    await payments.checkout({
+      consultationId: created.id,
+      cardNumber: card.value.number,
+      cardName: card.value.name || auth.user?.name || 'Patient',
+      expiry: card.value.expiry,
+      cvc: card.value.cvc,
+    });
+    callDialog.value = false;
+    await router.push(`/patient/consultations/${created.id}`);
+  } catch (err) {
+    callError.value = err instanceof Error ? err.message : 'The payment could not be completed.';
+  } finally {
+    payingCall.value = false;
   }
 }
 
@@ -614,6 +649,35 @@ onUnmounted(() => {
             </div>
           </div>
         </form>
+
+        <!-- Video call: book + pay dialog -->
+        <div v-if="callDialog" class="fixed inset-0 z-40 flex items-center justify-center bg-ink-900/50 p-4" @click.self="callDialog = false">
+          <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-card">
+            <p class="text-[15px] font-bold text-ink-900">Start a video consultation</p>
+            <p class="mt-1 text-[12.5px] leading-relaxed text-ink-500">
+              Video call with <span class="font-semibold text-ink-800">{{ active?.counterpart?.name }}</span> — $10.00 for a private room of up to 2 hours, with live video, audio and chat.
+            </p>
+            <div class="mt-3 space-y-2">
+              <input v-model="card.number" class="input text-[13px]" placeholder="Card number" inputmode="numeric" />
+              <input v-model="card.name" class="input text-[13px]" placeholder="Cardholder name" />
+              <div class="flex gap-2">
+                <input v-model="card.expiry" class="input w-1/2 text-[13px]" placeholder="MM/YY" />
+                <input v-model="card.cvc" class="input w-1/2 text-[13px]" placeholder="CVC" inputmode="numeric" />
+              </div>
+              <p class="text-[10.5px] text-ink-400">Demo card pre-filled — no real charge is made.</p>
+              <p v-if="callError" class="text-[11.5px] font-medium text-rose-600">{{ callError }}</p>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button type="button" class="btn-ghost flex-1 rounded-xl px-4 py-2 text-xs" @click="callDialog = false">Cancel</button>
+              <button
+                type="button"
+                class="dash-btn flex-1 rounded-xl px-4 py-2 text-xs"
+                :disabled="payingCall"
+                @click="confirmCall"
+              >{{ payingCall ? 'Processing…' : 'Pay $10.00 & join' }}</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

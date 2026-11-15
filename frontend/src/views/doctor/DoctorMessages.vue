@@ -187,7 +187,7 @@ async function toggleRecording() {
   recordTimer = window.setInterval(() => { recordSeconds.value += 1; }, 1000);
 }
 
-/** Join the active consultation room with this counterpart, or open the list. */
+/** Join the open consultation room, or send a call request into the chat. */
 async function startVideoCall() {
   if (!active.value) return;
   try {
@@ -197,13 +197,24 @@ async function startVideoCall() {
       const other = c.doctor?.id === counterpartId || c.patient?.id === counterpartId;
       return other && ['PAID', 'WAITING_ROOM', 'LIVE'].includes(c.status) && (c.roomMinutesLeft ?? 0) > 0;
     });
-    const base = auth.isDoctor ? '/doctor/consultations' : '/patient/consultations';
-    if (room) await router.push(`${base}/${room.id}`);
-    else await router.push(base);
+    if (room) {
+      await router.push(`/doctor/consultations/${room.id}`);
+      return;
+    }
+    // No open room — drop a visible call request into the conversation and
+    // point the patient at the video call button.
+    await connect.sendMessage(active.value.id,
+      `📹 ${auth.user?.name ?? 'Your clinician'} would like to start a video consultation with you. Tap the ⋯ menu → Video call to book a room and join.`);
+    await scroll();
+    sendError.value = null;
+    callNotice.value = 'Video call request sent — the patient can now book and join the room from this chat.';
+    window.setTimeout(() => { callNotice.value = null; }, 6000);
   } catch {
     await router.push('/doctor/consultations');
   }
 }
+
+const callNotice = ref<string | null>(null);
 
 onMounted(async () => {
   conversations.value = (await connect.conversations()).results;
@@ -355,6 +366,7 @@ onUnmounted(() => {
               @click="attachment = null; pendingLocation = null"
             >Remove</button>
           </div>
+          <p v-if="callNotice" class="mb-2 rounded-xl border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-[11.5px] font-medium text-brand-700">{{ callNotice }}</p>
           <p v-if="sendError" class="mb-2 text-[11.5px] font-medium text-rose-600">{{ sendError }}</p>
           <input ref="fileInput" type="file" :accept="fileAccept" class="hidden" @change="onFile" />
           <!-- Composer toolbar: media buttons left, send + more right -->
