@@ -14,7 +14,7 @@ backend-spring/.gradle/
 scripts/start-backend.sh
 
 # Node
-node_modules/
+node_modules
 frontend/dist/
 frontend/dist/
 frontend/.vite/
