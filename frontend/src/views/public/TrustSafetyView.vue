@@ -30,19 +30,36 @@ const controlIcons = [
 
 <template>
   <div class="container-page py-16">
-    <div class="grid items-center gap-10 lg:grid-cols-[1fr_auto]">
-      <header v-reveal class="max-w-3xl">
-        <span class="section-eyebrow">Trust &amp; safety</span>
-        <h1 class="section-title mt-5">{{ t('trust.title') }}</h1>
-        <p class="mt-3 text-lg leading-relaxed text-ink-600">{{ t('trust.lead') }}</p>
-      </header>
-      <div v-reveal:2 class="hidden lg:block">
-        <img
-          :src="shieldImage"
-          alt="Illustration of a shield representing layered privacy and safety controls"
-          class="animate-float-slow h-44 w-44 object-contain"
-          loading="lazy"
-        />
+    <div class="relative overflow-hidden rounded-3xl border border-ink-200 bg-white shadow-card">
+      <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-50/80 via-transparent to-terracotta-50/50" aria-hidden="true" />
+      <div class="relative grid items-center gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[1fr_auto]">
+        <header v-reveal class="max-w-3xl">
+          <span class="section-eyebrow">Trust &amp; safety</span>
+          <h1 class="section-title mt-5">{{ t('trust.title') }}</h1>
+          <p class="mt-3 text-lg leading-relaxed text-ink-600">{{ t('trust.lead') }}</p>
+          <ul class="mt-6 flex flex-wrap gap-2">
+            <li
+              v-for="pill in ['Patient-controlled sharing', 'Every access audited', 'Clinician oversight on AI output']"
+              :key="pill"
+              class="flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-ink-600 shadow-sm"
+            >
+              <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              {{ pill }}
+            </li>
+          </ul>
+        </header>
+        <div v-reveal:2 class="hidden justify-self-end lg:block">
+          <div class="rounded-2xl border border-ink-200 bg-gradient-to-br from-brand-50 to-white p-8">
+            <img
+              :src="shieldImage"
+              alt="Illustration of a shield representing layered privacy and safety controls"
+              class="animate-float-slow h-40 w-40 object-contain"
+              loading="lazy"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -51,7 +68,7 @@ const controlIcons = [
       <div class="flex items-center gap-4">
         <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Controls</h2>
         <span class="h-px flex-1 bg-ink-100" />
-        <span class="text-[12px] font-medium text-ink-400">What we check, and what we cannot promise</span>
+        <span class="text-[12px] font-medium text-ink-400">Consent, audit and honest AI limits</span>
       </div>
       <div class="mt-6 grid gap-5 md:grid-cols-2">
         <article
