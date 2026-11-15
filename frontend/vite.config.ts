@@ -3,6 +3,13 @@ import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
+  // The Vite entry (index.html) lives at the repo root, outside frontend/.
+  root: fileURLToPath(new URL('..', import.meta.url)),
+  build: {
+    // Keep build output in frontend/dist (used by nginx in Docker).
+    outDir: fileURLToPath(new URL('./dist', import.meta.url)),
+    emptyOutDir: true,
+  },
   plugins: [vue()],
   resolve: {
     alias: {
@@ -11,6 +18,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    fs: {
+      // Allow serving files from the repo root (index.html + frontend/src).
+      allow: [fileURLToPath(new URL('..', import.meta.url))],
+    },
     strictPort: true,
     // Allow cloudflared quick-tunnel hosts (URL changes on each restart).
     allowedHosts: true,

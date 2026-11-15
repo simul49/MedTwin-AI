@@ -14,7 +14,8 @@ backend-spring/.gradle/
 scripts/start-backend.sh
 
 # Node
-frontend/node_modules/
+node_modules/
+frontend/dist/
 frontend/dist/
 frontend/.vite/
 npm-debug.log*
