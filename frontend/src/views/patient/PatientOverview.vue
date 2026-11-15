@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 import { patient, connect } from '@/api/endpoints';
 import { useAsync, formatDateTime } from '@/composables/useAsync';
+import { useRealtime } from '@/composables/useRealtime';
 import heroDigitalTwin from '@/assets/hero-digital-twin.png';
 import type { Observation } from '@/api/types';
 
 const auth = useAuthStore();
-const { data: twin, loading, error } = useAsync(() => patient.digitalTwin());
+const ui = useUiStore();
+const { data: twin, loading, error, run: reloadTwin } = useAsync(() => patient.digitalTwin());
 const { data: notifications } = useAsync(() => connect.notifications());
 
 const completeness = computed(() => {
@@ -40,17 +43,6 @@ interface Vital {
   annotationStyle: string;
 }
 
-/** Deterministic mini-sparkline seeded by the measured value. */
-function sparkFor(value: number, level = 1): number[] {
-  const base = Math.min(1, Math.abs(value) / 100) || 0.5;
-  const out: number[] = [];
-  for (let i = 0; i < 18; i += 1) {
-    const wave = 0.55 + 0.3 * Math.sin((i / 18) * Math.PI * 2 * level + base * 6);
-    out.push(Math.max(0.15, wave * base + 0.12) * 100);
-  }
-  return out;
-}
-
 /** SVG polyline points for a vital sparkline (viewBox 100 x 32). */
 function sparklinePoints(values: number[]): string {
   const n = values.length;
@@ -65,8 +57,8 @@ function sparklineArea(values: number[]): string {
 const sparkColor = (flag: string) =>
   flag === 'HIGH' || flag === 'CRITICAL' ? '#E2725B' : flag === 'LOW' ? '#7C5FE8' : '#101585';
 
-function vitalFrom(obs: Observation | undefined, fallback: string, partial: Omit<Vital, 'display' | 'flag'>): Vital {
-  let display = obs?.displayValue || fallback;
+function vitalFrom(obs: Observation | undefined, partial: Omit<Vital, 'display' | 'flag'>): Vital {
+  let display = obs?.displayValue || '';
   const unit = partial.unit;
   // displayValue often embeds the unit ("132 mmHg") — strip it so the template shows one unit.
   if (unit && display.toLowerCase().includes(unit.toLowerCase())) {
@@ -74,9 +66,28 @@ function vitalFrom(obs: Observation | undefined, fallback: string, partial: Omit
   }
   return {
     ...partial,
-    display,
+    display: display || '—',
     flag: obs?.flag || 'NORMAL',
   };
+}
+
+/** All observations matching a vital label, oldest → newest (real history). */
+function historyFor(...needles: string[]): Observation[] {
+  return observations.value
+    .filter((o) => needles.some((n) => `${o.label} ${o.code}`.toLowerCase().includes(n)) && o.value != null)
+    .sort((a, b) => (a.observedAt ?? '').localeCompare(b.observedAt ?? ''));
+}
+
+/** Normalise a real measurement series into sparkline space (20–90). */
+function realSpark(series: Observation[]): number[] {
+  const values = series.map((o) => o.value as number);
+  if (!values.length) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  const scaled = values.map((v) => (span ? 20 + ((v - min) / span) * 70 : 55));
+  if (scaled.length === 1) scaled.push(scaled[0]);
+  return scaled;
 }
 
 const vitals = computed<Vital[]>(() => {
@@ -86,33 +97,84 @@ const vitals = computed<Vital[]>(() => {
   const glucose = findObs('glucose', 'hba1c');
   const hrv = findObs('hrv', 'variability');
   const list: Vital[] = [
-    vitalFrom(heart, '72', {
-      key: 'heart', label: 'Heart Rate', unit: 'bpm', note: 'Resting pulse',
-      spark: sparkFor(heart?.value ?? 72, 3), annotationStyle: 'left-[3%] top-[14%]',
+    vitalFrom(heart, {
+      key: 'heart', label: 'Heart Rate', unit: 'bpm', note: heart ? 'Resting pulse' : 'No reading yet',
+      spark: realSpark(historyFor('heart', 'pulse')), annotationStyle: 'left-[3%] top-[14%]',
     }),
-    vitalFrom(bp, '132', {
-      key: 'bp', label: 'Blood Pressure', unit: bp?.unit || 'mmHg', note: 'Systolic reading',
-      spark: sparkFor(bp?.value ?? 132, 2), annotationStyle: 'right-[3%] top-[24%]',
+    vitalFrom(bp, {
+      key: 'bp', label: 'Blood Pressure', unit: bp?.unit || 'mmHg', note: bp ? 'Systolic reading' : 'No reading yet',
+      spark: realSpark(historyFor('systolic', 'blood pressure')), annotationStyle: 'right-[3%] top-[24%]',
     }),
-    vitalFrom(spo2, '97', {
-      key: 'spo2', label: 'SpO₂', unit: '%', note: 'Oxygen saturation',
-      spark: sparkFor(spo2?.value ?? 97, 1.4), annotationStyle: 'left-[5%] top-[48%]',
+    vitalFrom(spo2, {
+      key: 'spo2', label: 'SpO₂', unit: '%', note: spo2 ? 'Oxygen saturation' : 'No reading yet',
+      spark: realSpark(historyFor('spo2', 'oxygen')), annotationStyle: 'left-[5%] top-[48%]',
     }),
-    vitalFrom(glucose, '7.1', {
-      key: 'glucose', label: 'Blood Glucose', unit: glucose?.unit || 'mmol/L', note: 'Latest panel',
-      spark: sparkFor(glucose?.value ?? 7.1, 2.2), annotationStyle: 'right-[5%] top-[62%]',
+    vitalFrom(glucose, {
+      key: 'glucose', label: 'Blood Glucose', unit: glucose?.unit || 'mmol/L', note: glucose ? 'Latest panel' : 'No reading yet',
+      spark: realSpark(historyFor('glucose', 'hba1c')), annotationStyle: 'right-[5%] top-[62%]',
     }),
   ];
   if (hrv) {
-    list.push(vitalFrom(hrv, '46', {
+    list.push(vitalFrom(hrv, {
       key: 'hrv', label: 'HRV', unit: hrv.unit || 'ms', note: 'Autonomic balance',
-      spark: sparkFor(hrv.value ?? 46, 2.6), annotationStyle: 'left-[7%] top-[76%]',
+      spark: realSpark(historyFor('hrv', 'variability')), annotationStyle: 'left-[7%] top-[76%]',
     }));
   }
   return list;
 });
 
 const annotatedVitals = computed(() => vitals.value.slice(0, 4));
+
+// --- Log a reading: new patients fill real vitals; dashboard updates instantly ---
+
+interface ReadingField {
+  key: string;
+  label: string;
+  unit: string;
+  obsLabel: string;
+  placeholder: string;
+  normal: (v: number) => string;
+}
+
+const READING_FIELDS: ReadingField[] = [
+  { key: 'heart', label: 'Heart rate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
+  { key: 'bp', label: 'Blood pressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
+  { key: 'spo2', label: 'SpO₂', unit: '%', obsLabel: 'SpO2', placeholder: '97', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
+  { key: 'glucose', label: 'Blood glucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
+];
+
+const readings = ref<Record<string, string>>({ heart: '', bp: '', spo2: '', glucose: '' });
+const savingReading = ref(false);
+
+async function saveReadings() {
+  const payload = READING_FIELDS.filter((f) => readings.value[f.key]?.trim()).map((f) => ({
+    label: f.obsLabel,
+    value: readings.value[f.key].trim(),
+    unit: f.unit,
+    flag: f.normal(Number(readings.value[f.key])),
+  }));
+  if (!payload.length) return;
+  savingReading.value = true;
+  try {
+    for (const item of payload) await patient.createObservation(item);
+    Object.keys(readings.value).forEach((k) => { readings.value[k] = ''; });
+    await reloadTwin();
+    ui.notify('Reading saved — your twin is up to date.', 'success');
+  } catch (err) {
+    ui.notify(err instanceof Error ? err.message : 'Could not save the reading.', 'error');
+  } finally {
+    savingReading.value = false;
+  }
+}
+
+// Real-time: the twin refreshes itself whenever any platform event arrives.
+const realtime = useRealtime();
+let unsubscribe: (() => void) | null = null;
+onMounted(() => {
+  realtime.connect();
+  unsubscribe = realtime.on('notification', () => void reloadTwin());
+});
+onUnmounted(() => unsubscribe?.());
 
 /** Flagged observations become twin insight cards, worst first. */
 const severityOf = (flag: string) =>
@@ -227,25 +289,52 @@ const activeConsents = computed(() => twin.value?.consents.filter((c) => c.isEff
                     <stop offset="100%" :stop-color="sparkColor(vital.flag)" stop-opacity="0" />
                   </linearGradient>
                 </defs>
-                <path :d="sparklineArea(vital.spark)" :fill="`url(#spark-${vital.key})`" />
-                <polyline
-                  :points="sparklinePoints(vital.spark)"
-                  fill="none"
-                  :stroke="sparkColor(vital.flag)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  vector-effect="non-scaling-stroke"
-                />
-                <circle
-                  :cx="100"
-                  :cy="30 - (vital.spark[vital.spark.length - 1] / 100) * 25"
-                  r="2.5"
-                  :fill="sparkColor(vital.flag)"
-                />
+                <template v-if="vital.spark.length">
+                  <path :d="sparklineArea(vital.spark)" :fill="`url(#spark-${vital.key})`" />
+                  <polyline
+                    :points="sparklinePoints(vital.spark)"
+                    fill="none"
+                    :stroke="sparkColor(vital.flag)"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    vector-effect="non-scaling-stroke"
+                  />
+                  <circle
+                    :cx="100"
+                    :cy="30 - (vital.spark[vital.spark.length - 1] / 100) * 25"
+                    r="2.5"
+                    :fill="sparkColor(vital.flag)"
+                  />
+                </template>
+                <line v-else x1="0" y1="16" x2="100" y2="16" stroke="#c7cdd8" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" />
               </svg>
             </div>
             <p class="mt-1 text-[10.5px] text-ink-400">{{ vital.note }}</p>
+          </div>
+
+          <!-- Log a reading: fills the twin with this patient's real vitals -->
+          <div class="dash-card dash-card-pad">
+            <p class="dash-section-title">Log a reading</p>
+            <p class="mt-0.5 text-[11px] text-ink-400">Your numbers appear on the twin instantly.</p>
+            <div class="mt-3 space-y-2">
+              <div v-for="field in READING_FIELDS" :key="field.key" class="flex items-center gap-2">
+                <label class="w-[104px] shrink-0 text-[11.5px] font-medium text-ink-600">{{ field.label }}</label>
+                <input
+                  v-model="readings[field.key]"
+                  class="input px-2.5 py-1.5 text-[12.5px]"
+                  :placeholder="field.placeholder"
+                  inputmode="decimal"
+                />
+                <span class="w-[52px] shrink-0 text-[10.5px] text-ink-400">{{ field.unit }}</span>
+              </div>
+              <button
+                class="dash-btn mt-1 w-full rounded-xl py-2 text-[12px]"
+                type="button"
+                :disabled="savingReading || !READING_FIELDS.some((f) => readings[f.key]?.trim())"
+                @click="saveReadings"
+              >{{ savingReading ? 'Saving…' : 'Save readings' }}</button>
+            </div>
           </div>
         </div>
 
