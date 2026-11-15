@@ -30,6 +30,11 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      # Vite root is the repo root (index.html lives there), so dependencies
+      # must be resolvable from the root — same trick as docker/Dockerfile.frontend.
+      - name: Link node_modules to repo root
+        run: ln -s frontend/node_modules node_modules
+
       - name: Typecheck
         shell: bash
         run: set -o pipefail && npx vue-tsc --noEmit 2>&1 | tee /tmp/step-typecheck.log
