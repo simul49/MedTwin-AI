@@ -46,6 +46,9 @@ let localStream: MediaStream | null = null;
 let cameraTrack: MediaStreamTrack | null = null;
 let screenStream: MediaStream | null = null;
 let iceServers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+// ok = camera+mic live · audio-only = no camera found · none = no media at all
+const mediaState = ref<'ok' | 'audio-only' | 'none'>('ok');
+const hasLocalVideo = computed(() => mediaState.value === 'ok');
 let makingOffer = false;
 let ignoreOffer = false;
 let iceRestartAttempts = 0;
@@ -68,14 +71,47 @@ async function loadIceConfig() {
   }
 }
 
+function mediaErrorMessage(err: unknown): string {
+  const name = (err as DOMException)?.name ?? '';
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return 'Camera/microphone access was blocked. Click the camera icon in your browser address bar, allow access for this site, then rejoin the room.';
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'No camera was found on this device. You can still take part — the call continues in audio-only mode when a microphone is available.';
+  }
+  if (name === 'NotReadableError') {
+    return 'Your camera is in use by another application (Zoom, Teams, FaceTime…). Close it, then rejoin the room.';
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return 'Video calls need a secure connection — open the app via https:// or http://localhost. Camera access is blocked over plain http from other devices.';
+  }
+  return 'Camera or microphone unavailable.';
+}
+
 async function ensureLocalStream() {
   if (localStream) return localStream;
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-    audio: { echoCancellation: true, noiseSuppression: true },
-  });
+  if (!navigator.mediaDevices?.getUserMedia) {
+    mediaState.value = 'none';
+    throw new Error('getUserMedia unavailable (insecure context)');
+  }
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
+    mediaState.value = 'ok';
+  } catch (err) {
+    // Degrade gracefully: a missing/blocked camera must not kill the call.
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaState.value = 'audio-only';
+    } catch {
+      mediaState.value = 'none';
+      throw err;
+    }
+  }
   cameraTrack = localStream.getVideoTracks()[0] ?? null;
-  if (localVideo.value) localVideo.value.srcObject = localStream;
+  if (localVideo.value && cameraTrack) localVideo.value.srcObject = localStream;
   return localStream;
 }
 
@@ -213,8 +249,11 @@ async function handleSignal(payload: Record<string, unknown>) {
         if (!ignoreOffer) throw err;
       }
     }
-  } catch {
-    // transient signalling race — perfect negotiation recovers on the next event
+  } catch (err) {
+    if (mediaState.value === 'none') {
+      error.value = mediaErrorMessage(err);
+    }
+    // other failures are transient signalling races — perfect negotiation recovers
   }
 }
 
@@ -227,7 +266,7 @@ async function onRoomUsers(users: string[]) {
       await ensureLocalStream();
       pc = createPeer(); // onnegotiationneeded sends the offer
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Camera or microphone unavailable.';
+      error.value = mediaErrorMessage(err);
     }
   }
 }
@@ -354,6 +393,14 @@ onMounted(async () => {
 
     realtime.connect();
     realtime.join(room.value);
+
+    // Start the local camera right away so users see their own preview while
+    // waiting — a blocked/missing camera surfaces here, not mid-negotiation.
+    try {
+      await ensureLocalStream();
+    } catch (err) {
+      error.value = mediaErrorMessage(err);
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   }
@@ -417,12 +464,19 @@ onUnmounted(cleanup);
         >Sharing screen</span>
         <!-- local preview -->
         <video
+          v-show="hasLocalVideo"
           ref="localVideo"
           autoplay
           playsinline
           muted
           class="absolute bottom-14 right-3 h-28 w-44 rounded-xl border border-white/20 object-cover shadow-lg"
         />
+        <span
+          v-if="mediaState === 'audio-only'"
+          class="absolute bottom-14 right-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold text-white/80"
+        >
+          Audio-only mode — no camera available
+        </span>
         <!-- controls -->
         <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
           <button
