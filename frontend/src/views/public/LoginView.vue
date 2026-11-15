@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
-import MedicalDisclaimer from '@/components/ui/MedicalDisclaimer.vue';
 
 // --- Live platform statistics (real data, refreshed continuously) -----------
 
@@ -183,35 +182,38 @@ function switchPortal(role: string) {
         </div>
       </div>
 
-      <div class="relative mt-10">
-          <p class="flex items-center gap-2 text-[12px] font-semibold text-white/80">
-            <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M9.5 12l2 2 3.5-3.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            End-to-end encrypted
-          </p>
-          <p class="mt-2 flex items-center gap-2 text-[12px] font-semibold text-white/80">
-            <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Consent-controlled records
-          </p>
-          <p class="mt-2 flex items-center gap-2 text-[12px] font-semibold text-white/80">
-            <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Full audit trail on every access
-          </p>
+      <!-- Trust strip -->
+      <div class="relative mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/10 pt-6">
+        <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
+          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9.5 12l2 2 3.5-3.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          End-to-end encrypted
+        </p>
+        <span class="h-1 w-1 rounded-full bg-white/25" />
+        <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
+          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Consent-controlled records
+        </p>
+        <span class="h-1 w-1 rounded-full bg-white/25" />
+        <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
+          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Full audit trail on every access
+        </p>
       </div>
     </div>
 
     <!-- Form panel -->
-    <div class="flex items-center justify-center px-5 py-12 sm:px-10">
-      <div class="w-full max-w-[420px]">
+    <div class="flex items-center justify-center bg-gradient-to-b from-surface-50 to-surface-100/60 px-5 py-12 sm:px-10">
+      <div class="w-full max-w-[440px] rounded-3xl border border-ink-100 bg-white p-7 shadow-card sm:p-8">
         <!-- mobile brand -->
-        <div class="mb-8 flex items-center gap-3 lg:hidden">
+        <div class="mb-7 flex items-center gap-3 lg:hidden">
           <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M2 12h4l2-6 4 12 3-8 2 2h5" stroke-linecap="round" stroke-linejoin="round" />
@@ -220,7 +222,7 @@ function switchPortal(role: string) {
           <p class="text-lg font-extrabold tracking-tight text-brand-700">MedTwin<span class="text-brand-500">.ai</span></p>
         </div>
 
-        <h2 class="text-[26px] font-extrabold tracking-tight text-ink-900">Welcome back</h2>
+        <h2 class="text-[24px] font-extrabold tracking-tight text-ink-900">Welcome back</h2>
         <p class="mt-1.5 text-[13.5px] text-ink-500">Sign in to continue to your {{ portalLabel.toLowerCase() }} portal.</p>
 
         <!-- portal tabs -->
@@ -265,7 +267,11 @@ function switchPortal(role: string) {
             {{ error }}
           </p>
 
-          <button class="btn-primary flex w-full items-center justify-center gap-2 py-2.5" type="submit" :disabled="auth.loading">
+          <button
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(13,110,96,0.55)] transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            type="submit"
+            :disabled="auth.loading"
+          >
             <svg v-if="auth.loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="3" />
               <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
@@ -282,31 +288,25 @@ function switchPortal(role: string) {
           <RouterLink to="/register" class="font-semibold text-brand-700 hover:underline">Create an account</RouterLink>
         </p>
 
-        <!-- demo accounts -->
-        <div class="mt-7 rounded-2xl border border-ink-100 bg-surface-50 p-4">
-          <div class="flex items-center justify-between">
-            <p class="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-ink-400">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Live accounts
-            </p>
-            <p class="text-[11px] text-ink-400">Password: MedTwin@2026</p>
-          </div>
-          <div class="mt-2.5 grid grid-cols-3 gap-2">
-            <button
-              v-for="demo in DEMO"
-              :key="demo.email"
-              type="button"
-              class="rounded-xl border bg-white px-2 py-2 text-[11.5px] font-semibold transition-colors"
-              :class="email === demo.email ? 'border-brand-300 text-brand-700 ring-1 ring-brand-200' : 'border-ink-200 text-ink-600 hover:border-brand-300 hover:text-brand-700'"
-              :title="demo.email"
-              @click="useDemo(demo.email)"
-            >{{ demo.label }}</button>
-          </div>
-          <p class="mt-2 text-[10.5px] leading-relaxed text-ink-400">Fully working accounts on this platform — everything you do syncs in real time.</p>
+        <div class="mt-6 rounded-2xl border border-ink-100 bg-surface-50 px-4 py-3">
+          <p class="flex items-center gap-2 text-[11.5px] font-medium text-ink-600">
+            <span class="relative flex h-2 w-2 shrink-0">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Live accounts — tapping a portal tab pre-fills a working demo
+          </p>
+          <p class="mt-1 pl-4 text-[11px] text-ink-400">Shared password: <span class="font-mono font-semibold text-ink-600">MedTwin@2026</span> · everything you do syncs in real time.</p>
         </div>
 
-        <div class="mt-5">
-          <MedicalDisclaimer compact />
+        <!-- fine print -->
+        <div class="mt-6 border-t border-ink-100 pt-4">
+          <p class="text-[10.5px] leading-relaxed text-ink-400">
+            MedTwin.ai supports — but never replaces — professional medical advice, diagnosis or treatment.
+            <RouterLink to="/medical-disclaimer" class="font-medium text-ink-500 underline decoration-ink-300 underline-offset-2 hover:text-ink-700">Medical disclaimer</RouterLink>
+            ·
+            <RouterLink to="/privacy" class="font-medium text-ink-500 underline decoration-ink-300 underline-offset-2 hover:text-ink-700">Privacy</RouterLink>
+          </p>
         </div>
       </div>
     </div>
