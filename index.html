@@ -3,106 +3,358 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MedTwin AI — Your AI-Powered Digital Twin for Health</title>
-  <meta name="description" content="MedTwin AI: a personal health digital twin with an AI medical assistant, realtime chat, video consultations with licensed doctors, e-prescriptions and secure payments." />
+  <title>MedTwin AI — Real-World Medical &amp; Healthcare Digital Twin &amp; AI Safety Platform</title>
+  <meta name="description" content="MedTwin AI organises authorised health information into a structured Digital Twin and explains it with grounded, safety-aware AI — with healthcare professionals kept in the loop." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    :root { --brand: #1664aa; --ink: #0f172a; --muted: #64748b; --bg: #f6f8fb; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.6; }
-    header { display: flex; align-items: center; justify-content: space-between; padding: 18px 6vw; background: #fff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
-    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
-    .logo-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 17px; }
-    nav a { color: var(--muted); text-decoration: none; font-size: 14px; margin-left: 22px; }
-    nav a:hover { color: var(--brand); }
-    .hero { max-width: 880px; margin: 0 auto; padding: 72px 6vw 40px; text-align: center; }
-    .hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -0.02em; }
-    .hero p.sub { color: var(--muted); font-size: 17px; margin: 16px auto 28px; max-width: 640px; }
-    .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 26px; border-radius: 999px; font-weight: 700; font-size: 15px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 8px 20px rgba(22,100,170,.28); }
-    .btn-ghost { background: #fff; color: var(--ink); border: 1px solid #dbe2ec; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; max-width: 960px; margin: 44px auto; padding: 0 6vw; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 24px; }
-    .card .ic { width: 42px; height: 42px; border-radius: 12px; background: #e8f1fa; display: grid; place-items: center; font-size: 20px; margin-bottom: 12px; }
-    .card h3 { font-size: 16px; margin-bottom: 6px; }
-    .card p { color: var(--muted); font-size: 14px; }
-    .demo { max-width: 960px; margin: 8px auto 64px; padding: 0 6vw; }
-    .demo-box { background: #0f172a; color: #dbe4f0; border-radius: 18px; padding: 26px 28px; font-size: 14px; }
-    .demo-box h3 { color: #fff; margin-bottom: 10px; font-size: 15px; }
-    .demo-box code { background: rgba(255,255,255,.12); padding: 2px 8px; border-radius: 6px; font-size: 13px; }
-    footer { text-align: center; color: var(--muted); font-size: 12.5px; padding: 26px; border-top: 1px solid #e2e8f0; background: #fff; }
+    :root {
+      --brand-50:#F1F6FF; --brand-100:#CADCFC; --brand-500:#2539B4; --brand-600:#101585;
+      --brand-700:#00246B; --lavender:#A78BFA; --terracotta:#E2725B;
+      --ink-900:#101828; --ink-700:#344054; --ink-600:#475467; --ink-500:#667085; --ink-400:#98a2b3;
+      --border:rgba(16,24,40,.08); --surface:#f6f8fc;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:var(--ink-900); background:#fff; line-height:1.6; -webkit-font-smoothing:antialiased; }
+    img { max-width:100%; display:block; }
+    a { text-decoration:none; color:inherit; }
+    .container { max-width:1152px; margin:0 auto; padding:0 24px; }
+
+    /* ── Navbar ─────────────────────────────────────────── */
+    header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+    .nav { display:flex; align-items:center; justify-content:space-between; height:64px; }
+    .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; letter-spacing:-.01em; }
+    .logo-mark { width:32px; height:32px; border-radius:9px; background:var(--brand-600); color:#fff; display:grid; place-items:center; font-size:14px; font-weight:800; }
+    .nav-links { display:flex; gap:28px; list-style:none; }
+    .nav-links a { font-size:14px; font-weight:500; color:var(--ink-600); transition:color .2s; }
+    .nav-links a:hover { color:var(--brand-600); }
+    .nav-right { display:flex; align-items:center; gap:14px; }
+    .lang { font-size:13px; font-weight:600; color:var(--ink-600); border:1px solid var(--border); border-radius:999px; padding:6px 12px; background:#fff; }
+    .btn-nav { background:var(--brand-600); color:#fff; font-size:13.5px; font-weight:700; padding:9px 18px; border-radius:999px; transition:transform .15s, box-shadow .15s; }
+    .btn-nav:hover { transform:translateY(-1px); box-shadow:0 8px 18px rgba(16,21,133,.25); }
+    @media (max-width:820px){ .nav-links{display:none;} }
+
+    /* ── Hero ───────────────────────────────────────────── */
+    .hero { position:relative; overflow:hidden; border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(241,246,255,.7) 0%, rgba(255,255,255,.4) 55%, transparent 100%); }
+    .hero-bg { position:absolute; inset:0; pointer-events:none; }
+    .blob { position:absolute; border-radius:50%; filter:blur(72px); }
+    .blob-1 { left:-96px; top:-96px; width:288px; height:288px; background:rgba(152,179,240,.4); animation:float 9s ease-in-out infinite; }
+    .blob-2 { right:-64px; top:128px; width:320px; height:320px; background:rgba(228,219,253,.5); animation:float 12s ease-in-out infinite reverse; }
+    .dots { position:absolute; inset:0; background-image:radial-gradient(rgba(37,57,180,.10) 1px, transparent 1px); background-size:26px 26px; opacity:.5; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+    .hero-grid { position:relative; display:grid; gap:48px; align-items:center; padding:72px 0 88px; }
+    @media (min-width:1024px){ .hero-grid{ grid-template-columns:1fr 1fr; padding:96px 0 104px; } }
+    .eyebrow { display:inline-block; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-500); background:var(--brand-50); border:1px solid var(--brand-100); border-radius:999px; padding:7px 14px; }
+    h1 { font-size:clamp(34px,5vw,48px); font-weight:800; line-height:1.1; letter-spacing:-.02em; margin-top:20px; }
+    .tagline { margin-top:12px; font-size:19px; font-weight:700;
+      background:linear-gradient(90deg, var(--brand-400,#3F5BD1), var(--lavender)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .sub { margin-top:20px; max-width:34rem; font-size:17.5px; color:var(--ink-600); }
+    .cta-row { margin-top:32px; display:flex; flex-wrap:wrap; gap:12px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 24px; border-radius:12px; font-size:14.5px; font-weight:600; transition:transform .2s, box-shadow .2s; }
+    .btn-primary { background:var(--brand-600); color:#fff; }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(16,21,133,.3); }
+    .btn-secondary { background:#fff; color:var(--ink-900); border:1px solid var(--border); }
+    .btn-secondary:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(16,24,40,.08); }
+    .stats { margin-top:40px; display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    @media (min-width:640px){ .stats{grid-template-columns:repeat(4,1fr);} }
+    .stat-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-400); }
+    .stat-bar { margin-top:6px; height:4px; width:40px; border-radius:999px; background:var(--brand-100); overflow:hidden; }
+    .stat-bar span { display:block; height:100%; width:100%; border-radius:999px; background:var(--brand-500); transform-origin:left; animation:grow 1s ease-out .4s both; }
+    @keyframes grow { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+    .hero-visual { position:relative; }
+    .hero-frame { overflow:hidden; border-radius:18px; border:1px solid var(--border); background:#fff; box-shadow:0 20px 40px -14px rgba(16,24,40,.14); }
+    .hero-frame::after { content:""; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,36,107,.10), transparent 40%); border-radius:18px; pointer-events:none; }
+    .badge-float { position:absolute; bottom:-20px; left:24px; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.95); backdrop-filter:blur(8px);
+      border:1px solid var(--border); border-radius:14px; padding:12px 16px; box-shadow:0 16px 32px -10px rgba(16,24,40,.18); animation:float 7s ease-in-out infinite; }
+    .badge-check { width:36px; height:36px; border-radius:50%; background:#d1fae5; display:grid; place-items:center; color:#059669; font-size:16px; flex-shrink:0; }
+    .badge-float b { display:block; font-size:14px; }
+    .badge-float small { display:block; font-size:11px; color:var(--ink-500); }
+
+    /* ── Sections ───────────────────────────────────────── */
+    section { padding:64px 0; }
+    .section-title { font-size:clamp(24px,3vw,32px); font-weight:800; letter-spacing:-.02em; }
+    .cap-grid { margin-top:32px; display:grid; gap:20px; }
+    @media (min-width:640px){ .cap-grid{grid-template-columns:repeat(2,1fr);} }
+    @media (min-width:1024px){ .cap-grid{grid-template-columns:repeat(3,1fr);} }
+    .card { background:#fff; border:1px solid var(--border); border-radius:18px; padding:24px; transition:transform .3s, box-shadow .3s; }
+    .card:hover { transform:translateY(-4px); box-shadow:0 20px 36px -14px rgba(16,24,40,.16); }
+    .card .ic { width:44px; height:44px; border-radius:12px; background:var(--brand-50); display:grid; place-items:center; color:var(--brand-500); margin-bottom:16px; }
+    .card h3 { font-size:16px; font-weight:600; }
+    .card p { margin-top:6px; font-size:14.5px; color:var(--ink-500); }
+
+    .dark-band { background:linear-gradient(135deg, var(--brand-800,#001B52), var(--brand-600)); color:#fff; overflow:hidden; position:relative; }
+    .dark-grid { position:relative; display:grid; gap:40px; align-items:center; }
+    @media (min-width:1024px){ .dark-grid{grid-template-columns:1fr 1fr;} }
+    .chip-dark { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.08em; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:6px 14px; color:#CADCFC; }
+    .dark-band h2 { margin-top:16px; font-size:clamp(24px,3vw,34px); font-weight:700; letter-spacing:-.02em; }
+    .dark-band .lead { margin-top:16px; max-width:32rem; color:rgba(202,220,252,.8); }
+    .btn-white { margin-top:28px; display:inline-flex; background:#fff; color:#001B52; font-size:14px; font-weight:600; padding:11px 22px; border-radius:12px; transition:transform .2s; }
+    .btn-white:hover { transform:translateY(-2px); }
+    .metrics { display:grid; grid-template-columns:repeat(2,1fr); gap:28px; }
+    .metric b { font-size:clamp(28px,3.4vw,40px); font-weight:800; letter-spacing:-.02em; }
+    .metric p { margin-top:4px; font-size:13.5px; color:rgba(202,220,252,.75); }
+    .metric i { display:block; margin-top:12px; width:48px; height:2px; border-radius:999px; background:var(--terracotta); }
+
+    .split { display:grid; gap:40px; align-items:center; }
+    @media (min-width:1024px){ .split{grid-template-columns:1fr 1fr;} }
+    .frame { overflow:hidden; border-radius:18px; border:1px solid var(--border); background:#fff; box-shadow:0 20px 40px -14px rgba(16,24,40,.14); }
+    .frame img { transition:transform .7s; }
+    .frame:hover img { transform:scale(1.03); }
+    .checklist { margin-top:24px; list-style:none; display:grid; gap:12px; }
+    .checklist li { display:flex; gap:12px; font-size:14px; color:var(--ink-700); }
+    .checklist .tick { flex-shrink:0; width:20px; height:20px; border-radius:50%; background:var(--brand-100); color:var(--brand-600); display:grid; place-items:center; font-size:11px; margin-top:2px; }
+
+    .soft { background:rgba(255,255,255,.6); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+    .aud { display:grid; gap:16px; margin-top:28px; }
+    .aud a { display:block; }
+    .aud .cta { display:inline-block; margin-top:10px; font-size:13.5px; font-weight:600; color:var(--brand-700); }
+    .aud .cta:hover { text-decoration:underline; }
+
+    .flow { margin-top:32px; display:grid; gap:16px; }
+    @media (min-width:768px){ .flow{grid-template-columns:repeat(4,1fr);} }
+    .step { position:relative; border:1px solid var(--border); border-radius:16px; padding:20px; transition:border-color .3s, box-shadow .3s; }
+    .step:hover { border-color:var(--brand-300,#98B3F0); box-shadow:0 12px 24px -10px rgba(16,24,40,.12); }
+    .step b.num { font-size:12px; color:var(--brand-500); }
+    .step p.t { margin-top:8px; font-weight:600; font-size:14.5px; }
+    .step p.b { margin-top:4px; font-size:13.5px; color:var(--ink-500); }
+
+    .end-grid { display:grid; gap:32px; }
+    @media (min-width:1024px){ .end-grid{grid-template-columns:1fr 1fr;} }
+    .disclaimer { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:24px; }
+    .disclaimer h3 { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+    .disclaimer p { margin-top:10px; font-size:14px; color:var(--ink-600); }
+    footer { border-top:1px solid var(--border); padding:28px 0; text-align:center; font-size:12.5px; color:var(--ink-400); background:#fff; }
   </style>
 </head>
 <body>
+
   <header>
-    <div class="logo"><span class="logo-mark">✚</span> MedTwin AI</div>
-    <nav>
-      <a href="#features">Features</a>
-      <a href="#demo">Demo accounts</a>
-      <a href="http://localhost:5173/login?portal=patient">Open app</a>
-    </nav>
+    <div class="container nav">
+      <a class="logo" href="#"><span class="logo-mark">MT</span> MedTwin.ai</a>
+      <ul class="nav-links">
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#solutions">Solutions</a></li>
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#research">Research</a></li>
+        <li><a href="#trust">Trust &amp; Safety</a></li>
+      </ul>
+      <div class="nav-right">
+        <span class="lang">EN ▾</span>
+        <a class="btn-nav" href="#portals">Portal ▾</a>
+      </div>
+    </div>
   </header>
 
+  <!-- Hero -->
   <section class="hero">
-    <h1>Your AI-powered digital twin for health</h1>
-    <p class="sub">
-      MedTwin AI learns from your health records, answers medical questions with a
-      safety-first assistant, and connects you to licensed doctors — realtime chat,
-      video consultations, e-prescriptions and secure payments in one place.
-    </p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="http://localhost:5173/login?portal=patient">Get started as a patient</a>
-      <a class="btn btn-ghost" href="http://localhost:5173/login?portal=doctor">I'm a clinician</a>
+    <div class="hero-bg"><div class="dots"></div><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+    <div class="container hero-grid">
+      <div>
+        <span class="eyebrow">Digital Twin · Grounded AI · Trust &amp; Safety</span>
+        <h1>MedTwin AI</h1>
+        <p class="tagline">Real-World Medical &amp; Healthcare Digital Twin &amp; AI Safety Platform</p>
+        <p class="sub">
+          MedTwin AI turns authorised health records into a structured Digital Twin,
+          then explains them in plain language with sources, limitations, and clear
+          escalation guidance.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#solutions">Explore Solutions</a>
+          <a class="btn btn-secondary" href="#how">How It Works</a>
+          <a class="btn btn-secondary" href="#portals">Open your portal</a>
+        </div>
+        <div class="stats">
+          <div><p class="stat-label">Structured Digital Twin</p><div class="stat-bar"><span></span></div></div>
+          <div><p class="stat-label">Grounded AI assistant</p><div class="stat-bar"><span></span></div></div>
+          <div><p class="stat-label">Trust &amp; Safety checks</p><div class="stat-bar"><span></span></div></div>
+          <div><p class="stat-label">Consent-based sharing</p><div class="stat-bar"><span></span></div></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-frame">
+          <img src="frontend/src/assets/hero-digital-twin.png" alt="Illustration of a digital twin — a human figure formed by connected health data points" />
+        </div>
+        <div class="badge-float">
+          <span class="badge-check">✓</span>
+          <div>
+            <b>Built with explicit limits</b>
+            <small>Real-World Medical &amp; Healthcare Digital Twin &amp; AI Safety Platform</small>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="grid" id="features">
-    <div class="card">
-      <div class="ic">🧬</div>
-      <h3>Digital twin profile</h3>
-      <p>Your conditions, medications, allergies and documents build a living twin that powers every answer.</p>
-    </div>
-    <div class="card">
-      <div class="ic">🤖</div>
-      <h3>Safety-first AI assistant</h3>
-      <p>Grounded on your records with red-flag detection — and it always knows when a real doctor should step in.</p>
-    </div>
-    <div class="card">
-      <div class="ic">💬</div>
-      <h3>Realtime chat</h3>
-      <p>Instant messaging with your clinician over WebSocket — messages and notifications arrive live.</p>
-    </div>
-    <div class="card">
-      <div class="ic">🎥</div>
-      <h3>Video consultations</h3>
-      <p>Encrypted peer-to-peer video with screen sharing, call timer and automatic reconnection.</p>
-    </div>
-    <div class="card">
-      <div class="ic">💳</div>
-      <h3>Pay-per-consultation</h3>
-      <p>Secure card checkout, transaction ledger and downloadable receipts for every paid consult.</p>
-    </div>
-    <div class="card">
-      <div class="ic">📋</div>
-      <h3>E-prescriptions</h3>
-      <p>Doctors issue advice and prescriptions right after the call — patients see them instantly.</p>
+  <!-- Capabilities -->
+  <section id="solutions">
+    <div class="container">
+      <h2 class="section-title">What the platform does</h2>
+      <div class="cap-grid">
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3a4 4 0 110 8 4 4 0 010-8zM4 21a8 8 0 0116 0" stroke-linecap="round"/></svg></span>
+          <h3>Patient Digital Twin</h3>
+          <p>A structured, traceable view of records, medications, allergies, results and documents.</p>
+        </div>
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v11H9l-5 4z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <h3>AI Healthcare Assistant</h3>
+          <p>Plain-language explanations with citations, limitations and escalation guidance.</p>
+        </div>
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v6l4 2M12 3a9 9 0 100 18 9 9 0 000-18z" stroke-linecap="round"/></svg></span>
+          <h3>AI agents and RAG</h3>
+          <p>Retrieval over approved knowledge sources, with permission filters on every call.</p>
+        </div>
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.6 5.6 6.1.8-4.5 4.3 1.1 6-5.3-3-5.3 3 1.1-6L3.3 9.4l6.1-.8z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <h3>Educational recommendations</h3>
+          <p>Suggestions that explain their basis and can be dismissed or corrected.</p>
+        </div>
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <h3>Patient–doctor collaboration</h3>
+          <p>Consent-based access, messaging and appointment requests for authorised patients only.</p>
+        </div>
+        <div class="card">
+          <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <h3>Trust &amp; Safety evaluation</h3>
+          <p>An interpretable indicator with named factors — an evaluation aid, not a guarantee.</p>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="demo" id="demo">
-    <div class="demo-box">
-      <h3>Demo accounts (password: MedTwin@2026)</h3>
-      <p>
-        Patient: <code>patient@medtwin.dev</code> &nbsp;·&nbsp;
-        Doctor: <code>doctor@medtwin.dev</code> &nbsp;·&nbsp;
-        Admin: <code>admin@medtwin.dev</code>
+  <!-- Dark band -->
+  <section class="dark-band" id="trust">
+    <div class="container dark-grid">
+      <div>
+        <span class="chip-dark">TRUST, MEASURED</span>
+        <h2>Every answer carries its evidence</h2>
+        <p class="lead">
+          Retrieval, grounding checks, contradiction detection and risk routing run before
+          an answer reaches you. The result is an interpretable indicator — never a
+          guarantee of medical correctness.
+        </p>
+        <a class="btn-white" href="#trust">Trust &amp; Safety →</a>
+      </div>
+      <div class="metrics">
+        <div class="metric"><b>7</b><p>Named safety factors</p><i></i></div>
+        <div class="metric"><b>100%</b><p>Source-attributed answers</p><i></i></div>
+        <div class="metric"><b>100%</b><p>Consent-scoped access</p><i></i></div>
+        <div class="metric"><b>24/7</b><p>Audit trail coverage</p><i></i></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Extraction -->
+  <section id="research">
+    <div class="container split">
+      <div class="frame">
+        <img src="frontend/src/assets/document-extraction.png" alt="Illustration of a medical report being organised into structured data cards" loading="lazy" />
+      </div>
+      <div>
+        <span class="eyebrow">From paper to structure</span>
+        <h2 class="section-title" style="margin-top:16px">Your records, organised and traceable</h2>
+        <p class="sub" style="margin-top:16px">
+          Upload a report and MedTwin AI extracts the meaningful fields, keeps the original
+          document attached, and waits for your confirmation before anything becomes part
+          of your Digital Twin.
+        </p>
+        <ul class="checklist">
+          <li><span class="tick">✓</span> Lab values, dates and units structured from your documents</li>
+          <li><span class="tick">✓</span> Every extraction stays linked to its original source</li>
+          <li><span class="tick">✓</span> You review and confirm before anything enters your twin</li>
+        </ul>
+        <a class="btn btn-secondary" style="margin-top:28px" href="#how">How It Works</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audience -->
+  <section class="soft" id="portals">
+    <div class="container split">
+      <div>
+        <span class="eyebrow">Humans stay in the loop</span>
+        <h2 class="section-title" style="margin-top:16px">Built for both sides of the consultation</h2>
+        <div class="aud">
+          <div class="card">
+            <h3>For patients</h3>
+            <p>One place for your records, plain-language explanations and control over who sees what.</p>
+            <a class="cta" href="http://localhost:5173/login">Patient portal →</a>
+          </div>
+          <div class="card">
+            <h3>For clinicians</h3>
+            <p>A consent-scoped summary before the visit, with source links and an explicit AI draft label.</p>
+            <a class="cta" href="http://localhost:5173/login">Clinician portal →</a>
+          </div>
+          <div class="card">
+            <h3>For platform teams</h3>
+            <p>Governance in one view: users, consent grants, audit trails, model versions and safety events.</p>
+            <a class="cta" href="http://localhost:5173/login">Admin portal →</a>
+          </div>
+        </div>
+      </div>
+      <div style="position:relative">
+        <div class="frame">
+          <img src="frontend/src/assets/clinicians-collaboration.png" alt="Illustration of two clinicians reviewing a holographic health data display together" loading="lazy" />
+        </div>
+        <div class="badge-float" style="bottom:-16px; left:-16px; animation:none;">
+          <div>
+            <b style="font-size:12px">Clinician-verified</b>
+            <small>AI drafts are labelled, never silently applied</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Workflow -->
+  <section id="how" style="background:rgba(246,248,252,.5); border-bottom:1px solid var(--border);">
+    <div class="container">
+      <h2 class="section-title">A simple, transparent workflow</h2>
+      <div class="flow">
+        <div class="step"><b class="num">01</b><p class="t">Upload or enter</p><p class="b">Add a document or a record you already have.</p></div>
+        <div class="step"><b class="num">02</b><p class="t">Organised automatically</p><p class="b">Categorised, dated and linked to its source.</p></div>
+        <div class="step"><b class="num">03</b><p class="t">Explained with sources</p><p class="b">Plain language, with references and limits.</p></div>
+        <div class="step"><b class="num">04</b><p class="t">Share with consent</p><p class="b">Grant a clinician scoped access, and revoke anytime.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Safety -->
+  <section id="about">
+    <div class="container end-grid">
+      <div>
+        <h2 class="section-title">Built with explicit limits</h2>
+        <p class="sub" style="margin-top:12px">
+          Every answer shows the sources it used, what it could not verify, and when to
+          contact a professional. MedTwin AI never diagnoses, never prescribes, and never
+          manages emergencies.
+        </p>
+        <a class="btn btn-secondary" style="margin-top:24px" href="#trust">Trust &amp; Safety</a>
+      </div>
+      <div class="disclaimer">
+        <h3>⚕️ Medical disclaimer</h3>
+        <p>
+          MedTwin AI is a decision-support and information platform. It is not clinically
+          validated and does not replace a healthcare professional. If you feel unwell,
+          contact your doctor or local emergency services.
+        </p>
+      </div>
+    </div>
+    <div class="container">
+      <p style="margin-top:32px; font-size:12px; color:var(--ink-400);">
+        MedTwin AI is a decision-support and information platform. It is not clinically validated and does not replace a healthcare professional.
       </p>
     </div>
   </section>
 
   <footer>
-    MedTwin AI — educational demo platform. Not a substitute for professional medical advice.
+    © 2026 MedTwin AI — Real-World Medical &amp; Healthcare Digital Twin &amp; AI Safety Platform
   </footer>
+
 </body>
 </html>
