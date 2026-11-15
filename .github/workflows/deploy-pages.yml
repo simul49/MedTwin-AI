@@ -1,4 +1,4 @@
-name: Deploy frontend to GitHub Pages
+name: Build and publish frontend to GitHub Pages
 
 on:
   push:
@@ -6,16 +6,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: build
   cancel-in-progress: true
 
 jobs:
   build:
+    # Don't re-run on our own auto-commits (avoids an infinite loop)
+    if: github.event.head_commit.author.username != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         working-directory: frontend
 
       # Vite root is the repo root (index.html lives there), so dependencies
-      # must be resolvable from the root — same trick as docker/Dockerfile.frontend.
+      # must be resolvable from the root — same as docker/Dockerfile.frontend.
       - name: Link node_modules to repo root
         run: ln -s frontend/node_modules node_modules
 
@@ -42,44 +42,24 @@ jobs:
 
       - name: Build
         shell: bash
+        run: set -o pipefail && npx vite build --base=/site/ 2>&1 | tee /tmp/step-build.log
+        working-directory: frontend
+
+      # GitHub Pages publishes the repo root of main, so commit the built app
+      # under /site/ plus a root 404.html SPA fallback (vue-router history mode).
+      - name: Publish built site into repo
         run: |
-          set +e
-          npx vite build 2>&1 | tee /tmp/step-build.log
-          code=$?
-          if [ $code -ne 0 ]; then
-            # Surface the failure publicly via annotations (logs need admin auth)
-            tail -n 10 /tmp/step-build.log | while IFS= read -r line; do
-              echo "::error::${line:0:1000}"
-            done
+          rm -rf site
+          mkdir site
+          cp -R frontend/dist/. site/
+          cp site/index.html 404.html
+          touch .nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site 404.html .nojekyll
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+          else
+            git commit -m "chore: publish built site to Pages [auto]"
+            git push
           fi
-          exit $code
-        working-directory: frontend
-
-      # SPA fallback: serve index.html for unknown routes (vue-router history mode)
-      - name: Add 404 fallback
-        if: success()
-        run: cp dist/index.html dist/404.html
-        working-directory: frontend
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: /tmp/step-*.log
-          if-no-files-found: ignore
-
-      - uses: actions/upload-pages-artifact@v3
-        if: success()
-        with:
-          path: frontend/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
