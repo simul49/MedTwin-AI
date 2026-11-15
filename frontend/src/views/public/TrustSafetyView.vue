@@ -112,19 +112,26 @@ const controlIcons = [
 
     <!-- Indicator explanation -->
     <section class="mt-16 grid gap-8 lg:grid-cols-2">
-      <div v-reveal>
+      <div v-reveal class="card card-pad">
         <div class="flex items-center gap-4">
           <h2 class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">{{ t('trust.indicatorTitle') }}</h2>
           <span class="h-px flex-1 bg-ink-100" />
+          <span class="text-[12px] font-medium text-ink-400">{{ factors.length }} factors · combined into one signal</span>
         </div>
         <p class="mt-4 leading-relaxed text-ink-600">{{ t('trust.indicatorBody') }}</p>
 
-        <ol class="mt-5 divide-y divide-ink-100">
-          <li v-for="(factor, index) in factors" :key="factor.key" class="flex gap-3.5 py-2.5 first:pt-0 last:pb-0">
-            <span class="w-7 shrink-0 text-[11px] font-bold tabular-nums text-brand-600">F{{ index + 1 }}</span>
+        <ol class="mt-5 space-y-2.5">
+          <li
+            v-for="(factor, index) in factors"
+            :key="factor.key"
+            class="group flex gap-3.5 rounded-xl border border-ink-200 bg-white px-4 py-3 transition-colors duration-300 hover:border-brand-300"
+          >
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[10.5px] font-bold text-brand-700 transition-colors duration-300 group-hover:bg-brand-100">
+              F{{ index + 1 }}
+            </span>
             <div>
-              <p class="text-[13.5px] font-semibold text-ink-800">{{ t(`safety.${factor.key}`) }}</p>
-              <p class="muted mt-0.5 text-[12.5px]">{{ factor.body }}</p>
+              <p class="text-[13px] font-semibold text-ink-800">{{ t(`safety.${factor.key}`) }}</p>
+              <p class="muted mt-0.5 text-[12px] leading-snug">{{ factor.body }}</p>
             </div>
           </li>
         </ol>
