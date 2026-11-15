@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import MedicalDisclaimer from '@/components/ui/MedicalDisclaimer.vue';
-import signinVisual from '@/assets/signin-visual.png';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -115,11 +114,7 @@ function switchPortal(role: string) {
         </ul>
       </div>
 
-      <div class="relative mt-10 flex items-end gap-6">
-        <div class="overflow-hidden rounded-2xl bg-white/10 p-3 ring-1 ring-white/15 backdrop-blur">
-          <img :src="signinVisual" alt="Illustration of a patient using a health dashboard" class="h-36 w-auto rounded-xl" loading="lazy" />
-        </div>
-        <div class="pb-2">
+      <div class="relative mt-10">
           <p class="flex items-center gap-2 text-[12px] font-semibold text-white/80">
             <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
@@ -140,7 +135,6 @@ function switchPortal(role: string) {
             </svg>
             Full audit trail on every access
           </p>
-        </div>
       </div>
     </div>
 
