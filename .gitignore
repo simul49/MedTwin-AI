@@ -11,6 +11,7 @@ backend-spring/build/
 backend-spring/.gradle/
 .gradle/
 *.class
+scripts/start-backend.sh
 
 # Node
 frontend/node_modules/
