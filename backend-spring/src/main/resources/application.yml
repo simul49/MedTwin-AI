@@ -29,4 +29,4 @@ medtwin:
   upload-dir: ../backend/var/documents
   csrf-cookie: medtwin_csrf
   session-cookie: medtwin_session
-  cors-origins: http://localhost:5173,http://127.0.0.1:5173
+  cors-origins: http://localhost:5173,http://127.0.0.1:5173,https://*.trycloudflare.com

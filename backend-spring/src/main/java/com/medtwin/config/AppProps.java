@@ -12,7 +12,7 @@ public class AppProps {
     private String uploadDir = "../backend/var/documents";
     private String csrfCookie = "medtwin_csrf";
     private String sessionCookie = "medtwin_session";
-    private String corsOrigins = "http://localhost:5173,http://127.0.0.1:5173";
+    private String corsOrigins = "http://localhost:5173,http://127.0.0.1:5173,https://*.trycloudflare.com";
 
     public String getAiServiceUrl() { return aiServiceUrl; }
     public void setAiServiceUrl(String value) { this.aiServiceUrl = value; }
