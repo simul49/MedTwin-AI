@@ -358,7 +358,7 @@ onUnmounted(() => {
           <p v-if="sendError" class="mb-2 text-[11.5px] font-medium text-rose-600">{{ sendError }}</p>
           <input ref="fileInput" type="file" :accept="fileAccept" class="hidden" @change="onFile" />
           <!-- Composer toolbar: media buttons left, send + more right -->
-          <div class="relative flex items-center gap-1.5">
+          <div class="relative flex items-center gap-1">
             <button
               type="button"
               class="btn-ghost shrink-0 rounded-full px-2 py-2"
@@ -366,7 +366,7 @@ onUnmounted(() => {
               aria-label="Send photo or video"
               @click="pickFile('image/*,video/*')"
             >
-              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <rect x="3" y="4" width="18" height="16" rx="2.5" />
                 <circle cx="9" cy="9.5" r="1.8" />
                 <path d="M3.5 17l4.5-4.5 3.5 3.5 4-4 5.5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -379,7 +379,7 @@ onUnmounted(() => {
               aria-label="Attach file"
               @click="pickFile('audio/*,application/pdf,text/*')"
             >
-              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l8.5-8.5a3.5 3.5 0 015 5L10.5 19a2 2 0 01-3-3l8-8" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </button>
@@ -399,16 +399,16 @@ onUnmounted(() => {
               aria-label="Insert emoji"
               @click="showEmoji = !showEmoji; showMore = false"
             >😀</button>
-            <span v-if="recording" class="ml-1 text-[11px] font-semibold text-rose-600">● {{ recordSeconds }}s — tap ⋯ → mic to stop</span>
+            <span v-if="recording" class="ml-1 shrink-0 text-[11px] font-semibold text-rose-600">● {{ recordSeconds }}s — tap ⋯ → mic to stop</span>
             <textarea
               v-model="draft"
               rows="1"
-              class="input min-h-10 flex-1 resize-none py-2 text-[13px]"
+              class="input min-h-10 min-w-0 flex-1 resize-none py-2 text-[13px]"
               placeholder="Write a message…"
               @keydown.enter.exact.prevent="send"
             />
             <button
-              class="btn-primary shrink-0 rounded-full px-5 py-2 text-xs"
+              class="btn-primary shrink-0 rounded-full px-4 py-2 text-xs"
               type="submit"
               :disabled="!draft.trim() && !attachment && !pendingLocation"
             >{{ t('patient.assistantSend') }}</button>
