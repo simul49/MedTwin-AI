@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { connect } from '@/api/endpoints';
+import { connect, consultations } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
 import type { ChatMessage, Conversation, MessageAttachment } from '@/api/types';
 
 const { t } = useI18n();
 const auth = useAuthStore();
+const router = useRouter();
 
 const conversations = ref<Conversation[]>([]);
 const active = ref<Conversation | null>(null);
@@ -117,6 +119,88 @@ function mapsEmbed(lat: number, lng: number): string {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
 }
 
+// --- WeChat-style toolbar: emoji, voice recording, video call ----------------
+
+const showEmoji = ref(false);
+const EMOJIS = ['😀','😄','😊','🙂','😉','😍','🤗','😎','🤔','😴','😷','🤒','🤕','🥲','🙏','👍','👎','👋','💪','❤️','💔','🎉','⭐','✅','❌','💊','💉','🩺','🚑','🏥','🥗','🏃','🧘','🌙','☀️','🔥','📞','📅','⏰','📷'];
+
+function insertEmoji(emoji: string) {
+  draft.value += emoji;
+  showEmoji.value = false;
+}
+
+// Voice recording via MediaRecorder; the clip auto-sends when stopped.
+const recording = ref(false);
+const recordSeconds = ref(0);
+let mediaRecorder: MediaRecorder | null = null;
+let mediaStream: MediaStream | null = null;
+let recordChunks: Blob[] = [];
+let recordTimer: number | undefined;
+
+async function toggleRecording() {
+  if (recording.value) {
+    mediaRecorder?.stop();
+    return;
+  }
+  if (!active.value) return;
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    sendError.value = 'Microphone access was denied — allow it in your browser settings to record voice messages.';
+    return;
+  }
+  sendError.value = null;
+  recordChunks = [];
+  mediaRecorder = new MediaRecorder(mediaStream);
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size) recordChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    recording.value = false;
+    window.clearInterval(recordTimer);
+    mediaStream?.getTracks().forEach((t) => t.stop());
+    mediaStream = null;
+    const blob = new Blob(recordChunks, { type: 'audio/webm' });
+    if (blob.size < 1200 || !active.value) return; // ignore accidental taps
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const message = await connect.sendMessage(active.value!.id, '', {
+          name: `voice-message-${recordSeconds.value}s.webm`,
+          type: 'audio/webm',
+          size: blob.size,
+          data: String(reader.result ?? ''),
+        });
+        messages.value.push(message);
+        await scroll();
+      } catch (err) {
+        sendError.value = err instanceof Error ? err.message : 'The voice message could not be sent.';
+      }
+    };
+    reader.readAsDataURL(blob);
+  };
+  mediaRecorder.start();
+  recording.value = true;
+  recordSeconds.value = 0;
+  recordTimer = window.setInterval(() => { recordSeconds.value += 1; }, 1000);
+}
+
+/** Join the active consultation room with this counterpart, or open the list. */
+async function startVideoCall() {
+  if (!active.value) return;
+  try {
+    const items = (await consultations.list()).results;
+    const counterpartId = active.value.counterpart?.id;
+    const room = items.find((c) => {
+      const other = c.doctor?.id === counterpartId || c.patient?.id === counterpartId;
+      return other && ['PAID', 'WAITING_ROOM', 'LIVE'].includes(c.status) && (c.roomMinutesLeft ?? 0) > 0;
+    });
+    const base = auth.isDoctor ? '/doctor/consultations' : '/patient/consultations';
+    if (room) await router.push(`${base}/${room.id}`);
+    else await router.push(base);
+  } catch {
+    await router.push('/doctor/consultations');
+  }
+}
+
 onMounted(async () => {
   conversations.value = (await connect.conversations()).results;
   if (conversations.value.length) await select(conversations.value[0]);
@@ -125,7 +209,10 @@ onMounted(async () => {
   }, 10000);
 });
 
-onUnmounted(() => timer && window.clearInterval(timer));
+onUnmounted(() => {
+  timer && window.clearInterval(timer);
+  if (recording.value) mediaRecorder?.stop();
+});
 </script>
 
 <template>
@@ -265,12 +352,20 @@ onUnmounted(() => timer && window.clearInterval(timer));
             >Remove</button>
           </div>
           <p v-if="sendError" class="mb-2 text-[11.5px] font-medium text-rose-600">{{ sendError }}</p>
-          <input ref="fileInput" type="file" class="hidden" @change="onFile" />
-          <div class="flex items-end gap-2">
+          <input ref="fileInput" type="file" accept="image/*,video/*,audio/*,application/pdf,text/*" class="hidden" @change="onFile" />
+          <!-- WeChat-style toolbar -->
+          <div class="relative flex items-center gap-0.5">
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2.5 py-2.5"
-              title="Attach a photo, video, audio or PDF (max 8 MB)"
+              class="btn-ghost shrink-0 px-2 py-2 text-[17px] leading-none"
+              title="Emoji"
+              aria-label="Insert emoji"
+              @click="showEmoji = !showEmoji"
+            >😀</button>
+            <button
+              type="button"
+              class="btn-ghost shrink-0 px-2 py-2"
+              title="Send a picture or video (max 8 MB)"
               aria-label="Attach file"
               @click="pickFile"
             >
@@ -280,7 +375,7 @@ onUnmounted(() => timer && window.clearInterval(timer));
             </button>
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2.5 py-2.5"
+              class="btn-ghost shrink-0 px-2 py-2"
               title="Share your current location"
               aria-label="Share location"
               @click="shareLocation"
@@ -290,10 +385,59 @@ onUnmounted(() => timer && window.clearInterval(timer));
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
             </button>
+            <button
+              type="button"
+              class="btn-ghost shrink-0 px-2 py-2"
+              :class="recording ? 'text-rose-600' : ''"
+              :title="recording ? `Recording… ${recordSeconds}s — tap to send` : 'Record a voice message'"
+              :aria-label="recording ? 'Stop and send voice message' : 'Record voice message'"
+              @click="toggleRecording"
+            >
+              <svg v-if="!recording" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" stroke-linecap="round" />
+                <path d="M5 11a7 7 0 0014 0M12 18v3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span v-else class="flex h-4.5 w-4.5 items-center justify-center">
+                <span class="h-3 w-3 animate-pulse rounded-full bg-rose-600" />
+              </span>
+            </button>
+            <button
+              type="button"
+              class="btn-ghost shrink-0 px-2 py-2"
+              title="Start or join a video consultation"
+              aria-label="Video call"
+              @click="startVideoCall"
+            >
+              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="3" y="6" width="12" height="12" rx="2.5" />
+                <path d="M15 10.5l5.5-3v9l-5.5-3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <span v-if="recording" class="ml-1.5 text-[11px] font-semibold text-rose-600">● {{ recordSeconds }}s — tap mic to send</span>
+            <!-- Emoji popover -->
+            <div
+              v-if="showEmoji"
+              class="absolute bottom-11 left-0 z-10 w-72 rounded-2xl border border-ink-200 bg-white p-2.5 shadow-card"
+            >
+              <div class="grid grid-cols-8 gap-1">
+                <button
+                  v-for="emoji in EMOJIS"
+                  :key="emoji"
+                  type="button"
+                  class="rounded-lg px-1 py-1 text-[17px] hover:bg-ink-50"
+                  @click="insertEmoji(emoji)"
+                >{{ emoji }}</button>
+              </div>
+              <button
+                type="button"
+                class="mt-1.5 w-full rounded-lg py-1 text-[11px] font-semibold text-ink-400 hover:bg-ink-50"
+                @click="showEmoji = false"
+              >Close</button>
+            </div>
             <textarea
               v-model="draft"
               rows="1"
-              class="input min-h-10 flex-1 resize-none py-2 text-[13px]"
+              class="input ml-1.5 min-h-10 flex-1 resize-none py-2 text-[13px]"
               placeholder="Write a message…"
               @keydown.enter.exact.prevent="send"
             />
