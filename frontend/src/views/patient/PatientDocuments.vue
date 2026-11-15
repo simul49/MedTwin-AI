@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { patient } from '@/api/endpoints';
 import { formatBytes, formatDateTime } from '@/composables/useAsync';
+import { useRealtime } from '@/composables/useRealtime';
 import type { DocumentRecord } from '@/api/types';
 
 const { t } = useI18n();
@@ -14,6 +15,7 @@ const selected = ref<DocumentRecord | null>(null);
 const loading = ref(false);
 const uploading = ref(false);
 const dragging = ref(false);
+const justUploaded = ref<string | null>(null);
 const error = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const category = ref('OTHER');
@@ -51,6 +53,16 @@ async function uploadFiles(files: FileList | File[] | null) {
     await patient.uploadDocument(file, category.value);
     if (fileInput.value) fileInput.value.value = '';
     await load();
+    // Extraction runs during the upload request, so the moment it returns
+    // the fresh document is fully processed — select it so the preview
+    // panel shows its extracted values immediately.
+    const fresh = [...documents.value]
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
+    if (fresh) {
+      selected.value = await patient.document(fresh.id);
+      justUploaded.value = fresh.id;
+      window.setTimeout(() => { if (justUploaded.value === fresh.id) justUploaded.value = null; }, 6000);
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -126,7 +138,17 @@ const fileIcon = (name: string) =>
 const pendingCount = () =>
   selected.value?.extractions?.filter((i) => i.reviewStatus === 'PENDING' || i.reviewStatus === 'NEEDS_REVIEW').length ?? 0;
 
-onMounted(load);
+// Live: platform events refresh the list so other-side changes appear instantly.
+const realtime = useRealtime();
+let unsubscribe: (() => void) | null = null;
+
+onMounted(() => {
+  void load();
+  realtime.connect();
+  unsubscribe = realtime.on('notification', () => void load());
+});
+
+onUnmounted(() => unsubscribe?.());
 </script>
 
 <template>
@@ -217,7 +239,13 @@ onMounted(load);
                           <path :d="fileIcon(document.name)" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                       </span>
-                      <span class="max-w-[240px] truncate font-medium" :class="selected?.id === document.id ? 'text-brand-800' : 'text-ink-700'" :title="document.name">{{ document.name }}</span>
+                      <span class="max-w-[220px] truncate font-medium" :class="selected?.id === document.id ? 'text-brand-800' : 'text-ink-700'" :title="document.name">{{ document.name }}</span>
+                      <span
+                        v-if="justUploaded === document.id"
+                        class="flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-1.5 py-0.5 text-[9.5px] font-bold text-brand-700 ring-1 ring-brand-200"
+                      >
+                        <span class="h-1 w-1 animate-pulse rounded-full bg-brand-500" /> NEW
+                      </span>
                     </span>
                   </td>
                   <td class="dash-td whitespace-nowrap text-ink-500">{{ formatDateTime(document.createdAt) }}</td>

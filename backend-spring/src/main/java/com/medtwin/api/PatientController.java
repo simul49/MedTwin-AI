@@ -29,13 +29,15 @@ public class PatientController {
     private final Audit audit;
     private final AiClient ai;
     private final Storage storage;
+    private final Realtime realtime;
 
-    public PatientController(Db db, Access access, Audit audit, AiClient ai, Storage storage) {
+    public PatientController(Db db, Access access, Audit audit, AiClient ai, Storage storage, Realtime realtime) {
         this.db = db;
         this.access = access;
         this.audit = audit;
         this.ai = ai;
         this.storage = storage;
+        this.realtime = realtime;
     }
 
     // ------------------------------------------------------------------ twin --
@@ -423,6 +425,20 @@ public class PatientController {
                 J.ts(), id, J.ts());
         audit.log("DOCUMENT_UPLOAD", "document", id, "SUCCESS",
                 J.map("size", file.getSize(), "status", error.isEmpty() ? "PROCESSED" : "FAILED"));
+
+        // Push in real time so any open page refreshes the moment the upload lands.
+        try {
+            realtime.pushToUser(patientId, J.map(
+                    "type", "notification",
+                    "notification", J.map(
+                            "type", "DOCUMENT_UPDATE",
+                            "title", "Document processed",
+                            "body", truncate(name, 120) + (error.isEmpty()
+                                    ? " — extraction complete." : " — extraction failed."),
+                            "link", "/patient/documents")));
+        } catch (Exception ignored) {
+            // best-effort
+        }
 
         List<Map<String, Object>> rows = db.list("SELECT * FROM document_extractions "
                 + "WHERE document_id = ? ORDER BY field_name", id);
