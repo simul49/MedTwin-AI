@@ -15,7 +15,8 @@ import java.util.Set;
 public class AuthInterceptor implements HandlerInterceptor {
     private static final Set<String> PUBLIC = Set.of(
             "/health/", "/auth/csrf/", "/auth/login/", "/auth/register/",
-            "/auth/password/forgot/", "/auth/password/reset/", "/ai/public-chat/");
+            "/auth/password/forgot/", "/auth/password/reset/", "/ai/public-chat/",
+            "/platform/stats/");
 
     private final Sessions sessions;
     private final AppProps props;

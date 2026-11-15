@@ -1,9 +1,61 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import MedicalDisclaimer from '@/components/ui/MedicalDisclaimer.vue';
+
+// --- Live platform statistics (real data, refreshed continuously) -----------
+
+interface PlatformStats {
+  members: number;
+  doctors: number;
+  consultations: number;
+  consultationsLive: number;
+  prescriptions: number;
+  messages: number;
+  documents: number;
+}
+
+const stats = ref<PlatformStats | null>(null);
+let statsTimer: number | undefined;
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/v1/platform/stats/');
+    if (!res.ok) return;
+    const data = await res.json();
+    stats.value = {
+      members: Number(data.members ?? 0),
+      doctors: Number(data.doctors ?? 0),
+      consultations: Number(data.consultations ?? 0),
+      consultationsLive: Number(data.consultationsLive ?? 0),
+      prescriptions: Number(data.prescriptions ?? 0),
+      messages: Number(data.messages ?? 0),
+      documents: Number(data.documents ?? 0),
+    };
+  } catch {
+    // keep the last known values
+  }
+}
+
+onMounted(() => {
+  void loadStats();
+  statsTimer = window.setInterval(loadStats, 15000);
+});
+
+onUnmounted(() => statsTimer && window.clearInterval(statsTimer));
+
+const liveStats = computed(() =>
+  stats.value
+    ? [
+        { label: stats.value.members + ' members', sub: stats.value.doctors + ' clinicians' },
+        { label: stats.value.consultations + ' consultations', sub: stats.value.consultationsLive > 0 ? stats.value.consultationsLive + ' live now' : 'all rooms idle' },
+        { label: stats.value.messages + ' messages', sub: 'synced in real time' },
+        { label: stats.value.prescriptions + ' prescriptions', sub: stats.value.documents + ' records' },
+      ]
+    : [],
+);
 
 const { t } = useI18n();
 const route = useRoute();
@@ -112,6 +164,23 @@ function switchPortal(role: string) {
             </div>
           </li>
         </ul>
+
+        <!-- Live platform statistics -->
+        <div v-if="liveStats.length" class="mt-10 rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
+          <p class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-100">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </span>
+            Live platform activity
+          </p>
+          <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+            <div v-for="item in liveStats" :key="item.label">
+              <p class="text-[17px] font-extrabold leading-tight text-white tabular-nums">{{ item.label }}</p>
+              <p class="text-[11px] text-white/55">{{ item.sub }}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="relative mt-10">
@@ -216,7 +285,10 @@ function switchPortal(role: string) {
         <!-- demo accounts -->
         <div class="mt-7 rounded-2xl border border-ink-100 bg-surface-50 p-4">
           <div class="flex items-center justify-between">
-            <p class="text-[12px] font-bold uppercase tracking-wide text-ink-400">Demo accounts</p>
+            <p class="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-ink-400">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live accounts
+            </p>
             <p class="text-[11px] text-ink-400">Password: MedTwin@2026</p>
           </div>
           <div class="mt-2.5 grid grid-cols-3 gap-2">
@@ -230,7 +302,7 @@ function switchPortal(role: string) {
               @click="useDemo(demo.email)"
             >{{ demo.label }}</button>
           </div>
-          <p class="mt-2 text-[10.5px] leading-relaxed text-ink-400">Synthetic data only — no real patient information.</p>
+          <p class="mt-2 text-[10.5px] leading-relaxed text-ink-400">Fully working accounts on this platform — everything you do syncs in real time.</p>
         </div>
 
         <div class="mt-5">

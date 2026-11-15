@@ -34,6 +34,20 @@ public class OpsController {
                 "time", J.nowIso());
     }
 
+    /** Live platform statistics for public pages — aggregate counts only, no PII. */
+    @GetMapping("/platform/stats/")
+    public Map<String, Object> platformStats() {
+        return J.map(
+                "members", db.count("SELECT COUNT(*) FROM users WHERE is_active = 1"),
+                "doctors", db.count("SELECT COUNT(*) FROM users WHERE role = 'DOCTOR' AND is_active = 1"),
+                "consultations", db.count("SELECT COUNT(*) FROM consultations"),
+                "consultationsLive", db.count("SELECT COUNT(*) FROM consultations WHERE status = 'LIVE'"),
+                "prescriptions", db.count("SELECT COUNT(*) FROM consultations WHERE prescription_note IS NOT NULL"),
+                "messages", db.count("SELECT COUNT(*) FROM messages"),
+                "documents", db.count("SELECT COUNT(*) FROM documents"),
+                "generatedAt", J.nowIso());
+    }
+
     @GetMapping("/admin/users/")
     public Map<String, Object> users(@RequestParam(required = false) String role,
                                      @RequestParam(required = false) String q) {
