@@ -37,4 +37,7 @@ echo "Starting Spring Boot on http://127.0.0.1:8001/api/v1 ..."
 (cd "$ROOT/backend-spring" && gradle bootRun --no-daemon --console=plain) &
 SPRING_PID=$!
 
-wait -n "$AI_PID" "$SPRING_PID"
+# macOS ships bash 3.2 which does not support `wait -n` — poll instead.
+while kill -0 "$AI_PID" 2>/dev/null && kill -0 "$SPRING_PID" 2>/dev/null; do
+  sleep 1
+done
