@@ -109,6 +109,23 @@ function download(document: DocumentRecord) {
 const statusText = (status: string) =>
   status === 'PROCESSED' ? 'Extraction successful' : status === 'FAILED' ? 'Extraction failed' : 'Processing text extraction…';
 
+const statusChip = (status: string) =>
+  status === 'PROCESSED' ? 'bg-brand-50 text-brand-700' : status === 'FAILED' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700';
+
+const reviewChip = (status: string) =>
+  status === 'CONFIRMED' ? 'bg-brand-50 text-brand-700'
+    : status === 'CORRECTED' ? 'bg-sky-50 text-sky-700'
+    : status === 'REJECTED' ? 'bg-rose-50 text-rose-700'
+    : 'bg-amber-50 text-amber-700';
+
+const fileIcon = (name: string) =>
+  name.toLowerCase().endsWith('.pdf') ? 'M6 2h8l4 4v16H6zM14 2v5h5M9 13h6M9 17h6'
+    : name.toLowerCase().match(/\.(png|jpe?g|gif|webp)$/) ? 'M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6'
+    : 'M6 2h8l4 4v16H6zM14 2v5h5';
+
+const pendingCount = () =>
+  selected.value?.extractions?.filter((i) => i.reviewStatus === 'PENDING' || i.reviewStatus === 'NEEDS_REVIEW').length ?? 0;
+
 onMounted(load);
 </script>
 
@@ -120,13 +137,16 @@ onMounted(load);
         <h1 class="text-[28px] font-bold leading-tight tracking-tight text-ink-900">Upload Medical Document</h1>
         <p class="mt-2 text-[14px] text-ink-500">Add a report, prescription or image. Extracted fields always need your review.</p>
       </div>
-      <select v-model="category" class="input w-44 text-xs" aria-label="Document category">
-        <option value="OTHER">Other</option>
-        <option value="LAB">Lab report</option>
-        <option value="IMAGING">Imaging</option>
-        <option value="PRESCRIPTION">Prescription</option>
-        <option value="LETTER">Letter</option>
-      </select>
+      <label class="flex items-center gap-2 text-[12px] font-semibold text-ink-500">
+        Document category
+        <select v-model="category" class="input w-40 text-xs" aria-label="Document category">
+          <option value="OTHER">Other</option>
+          <option value="LAB">Lab report</option>
+          <option value="IMAGING">Imaging</option>
+          <option value="PRESCRIPTION">Prescription</option>
+          <option value="LETTER">Letter</option>
+        </select>
+      </label>
     </div>
 
     <div class="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)]">
@@ -163,29 +183,47 @@ onMounted(load);
               </svg>
             </span>
             <div>
-              <p class="dash-section-title">Uploaded files</p>
+              <p class="dash-section-title">
+                Uploaded files
+                <span class="ml-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">{{ documents.length }}</span>
+              </p>
               <p class="dash-section-sub mt-0.5">Extraction status and source documents</p>
             </div>
           </div>
           <div v-if="loading" class="h-28 animate-pulse bg-ink-100" />
           <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[560px] border-collapse">
+            <table class="w-full min-w-[620px] border-collapse">
               <thead class="bg-surface-50">
                 <tr>
                   <th class="dash-th">Filename</th>
+                  <th class="dash-th">Uploaded</th>
                   <th class="dash-th">Size</th>
                   <th class="dash-th">Status</th>
-                  <th class="dash-th">Action</th>
+                  <th class="dash-th">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="document in documents" :key="document.id" class="dash-row">
+                <tr
+                  v-for="document in documents"
+                  :key="document.id"
+                  class="dash-row cursor-pointer"
+                  :class="selected?.id === document.id ? 'bg-brand-50/60' : ''"
+                  @click="open(document)"
+                >
                   <td class="dash-td">
-                    <button class="font-medium text-brand-700 hover:underline" @click="open(document)">{{ document.name }}</button>
+                    <span class="flex items-center gap-2">
+                      <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-ink-500">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                          <path :d="fileIcon(document.name)" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      <span class="max-w-[240px] truncate font-medium" :class="selected?.id === document.id ? 'text-brand-800' : 'text-ink-700'" :title="document.name">{{ document.name }}</span>
+                    </span>
                   </td>
-                  <td class="dash-td">{{ formatBytes(document.sizeBytes) }}</td>
+                  <td class="dash-td whitespace-nowrap text-ink-500">{{ formatDateTime(document.createdAt) }}</td>
+                  <td class="dash-td whitespace-nowrap">{{ formatBytes(document.sizeBytes) }}</td>
                   <td class="dash-td">
-                    <span class="chip" :class="document.processingStatus === 'PROCESSED' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'">
+                    <span class="chip whitespace-nowrap" :class="statusChip(document.processingStatus)">
                       {{ statusText(document.processingStatus) }}
                     </span>
                     <p v-if="document.processingStatus === 'FAILED' && document.processingError"
@@ -195,13 +233,13 @@ onMounted(load);
                   </td>
                   <td class="dash-td">
                     <div class="flex gap-2 text-[12px]">
-                      <button class="font-semibold text-brand-700 hover:underline" @click="download(document)">Download</button>
-                      <button class="font-semibold text-rose-600 hover:underline" @click="remove(document)">Cancel</button>
+                      <button class="font-semibold text-brand-700 hover:underline" @click.stop="download(document)">Download</button>
+                      <button class="font-semibold text-rose-600 hover:underline" @click.stop="remove(document)">Delete</button>
                     </div>
                   </td>
                 </tr>
                 <tr v-if="!documents.length">
-                  <td colspan="4" class="dash-td py-8 text-center text-ink-400">No documents uploaded yet.</td>
+                  <td colspan="5" class="dash-td py-8 text-center text-ink-400">No documents uploaded yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -265,8 +303,8 @@ onMounted(load);
             </p>
             <p v-else>Select a file to preview its extracted text.</p>
           </div>
-          <button class="dash-btn mt-4 w-full" :disabled="!selected?.extractions?.length" @click="attachAll">
-            Attach document to your digital twin records
+          <button class="dash-btn mt-4 w-full" :disabled="!pendingCount()" @click="attachAll">
+            {{ pendingCount() ? `Attach ${pendingCount()} value${pendingCount() === 1 ? '' : 's'} to my records` : 'All values attached to my records' }}
           </button>
           <button
             v-if="selected && selected.processingStatus === 'PROCESSED'"
@@ -286,12 +324,16 @@ onMounted(load);
         </div>
 
         <div v-if="selected?.extractions?.length" class="dash-card dash-card-pad">
-          <p class="text-sm font-bold text-ink-800">Review extractions</p>
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-bold text-ink-800">Review extractions</p>
+            <span v-if="pendingCount()" class="chip bg-amber-50 text-amber-700">{{ pendingCount() }} pending</span>
+            <span v-else class="chip bg-brand-50 text-brand-700">All reviewed</span>
+          </div>
           <div class="mt-3 space-y-2">
             <div v-for="item in selected.extractions" :key="item.id" class="rounded-xl border border-ink-200 px-3 py-2">
               <div class="flex items-center justify-between gap-2">
                 <p class="text-[12px] font-semibold text-ink-800">{{ item.label || item.fieldName }}</p>
-                <span class="chip bg-surface-100 text-ink-600">{{ item.reviewStatus }}</span>
+                <span class="chip whitespace-nowrap" :class="reviewChip(item.reviewStatus)">{{ item.reviewStatus.toLowerCase() }}</span>
               </div>
               <p class="mt-1 text-[12px] text-ink-600">{{ item.value }}</p>
               <div class="mt-2 flex gap-1.5">
