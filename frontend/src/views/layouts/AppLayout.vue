@@ -66,6 +66,7 @@ const items = computed(() => {
       { to: '/doctor/appointments', label: t('doctor.navAppointments'), icon: 'appointments' },
       { to: '/doctor/consultations', label: 'Consultations', icon: 'safety' },
       { to: '/doctor/messages', label: t('doctor.navMessages'), icon: 'messages' },
+      { to: '/doctor/notifications', label: t('patient.navNotifications'), icon: 'notifications' },
       { to: '/doctor/safety', label: t('doctor.safetyEvaluate'), icon: 'safety' },
       { to: '/doctor/settings', label: t('doctor.navSettings'), icon: 'settings' },
     ];
@@ -83,6 +84,10 @@ const items = computed(() => {
 
 const roleLabel = computed(() =>
   auth.isPatient ? 'Patient portal' : auth.isDoctor ? 'Clinician workspace' : 'Administration',
+);
+
+const notificationsPath = computed(() =>
+  auth.isDoctor ? '/doctor/notifications' : auth.isAdmin ? '/admin' : '/patient/notifications',
 );
 
 const pageTitle = computed(() => {
@@ -223,7 +228,7 @@ onMounted(loadNotifications);
             </Transition>
           </div>
 
-          <RouterLink to="/patient/notifications" class="btn-ghost relative px-2 py-2" :aria-label="t('patient.navNotifications')">
+          <RouterLink :to="notificationsPath" class="btn-ghost relative px-2 py-2" :aria-label="t('patient.navNotifications')">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
               <path :d="ICONS.notifications" stroke-linecap="round" stroke-linejoin="round" />
             </svg>

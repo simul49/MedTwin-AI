@@ -88,6 +88,18 @@ onMounted(() => {
     if (auth.isDoctor && n.type === 'PAYMENT_RECEIVED') {
       showToast(`${n.title} — ${n.body ?? ''}`.trim());
     }
+    if (auth.isDoctor && n.type === 'CONSULTATION_REQUEST') {
+      showToast(`${n.title} — ${n.body ?? ''}`.trim());
+    }
+    if (auth.isDoctor && n.type === 'CONSENT_REQUEST') {
+      showToast(`${n.title} — ${n.body ?? ''}`.trim());
+    }
+    if (auth.isPatient && n.type === 'CONSENT_GRANTED') {
+      showToast(`${n.title} — ${n.body ?? ''}`.trim());
+    }
+    if (auth.isPatient && n.type === 'CONSULTATION_UPDATE') {
+      showToast(`${n.title} — ${n.body ?? ''}`.trim());
+    }
   });
   realtime.connect();
 });

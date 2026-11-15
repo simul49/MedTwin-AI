@@ -55,6 +55,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'consultations/:id', name: 'doctor-consultation-room', component: () => import('@/views/shared/ConsultationRoom.vue'), props: true },
       { path: 'messages', name: 'doctor-messages', component: () => import('@/views/doctor/DoctorMessages.vue') },
       { path: 'safety', name: 'doctor-safety', component: () => import('@/views/doctor/DoctorSafety.vue') },
+      { path: 'notifications', name: 'doctor-notifications', component: () => import('@/views/doctor/DoctorNotifications.vue') },
       { path: 'settings', name: 'doctor-settings', component: () => import('@/views/doctor/DoctorSettings.vue') },
     ],
   },
