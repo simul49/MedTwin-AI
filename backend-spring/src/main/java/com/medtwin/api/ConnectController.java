@@ -95,7 +95,10 @@ public class ConnectController {
         String text = J.gs(payload, "body").trim();
         Map<String, Object> att = payload.get("attachment") instanceof Map<?, ?> a
                 ? (Map<String, Object>) a : null;
-        if (text.isEmpty() && att == null) throw ApiError.bad("Write a message or attach a file first.");
+        String metadataJson = payload.get("location") instanceof Map<?, ?> l
+                ? validateLocation((Map<String, Object>) l) : null;
+        if (text.isEmpty() && att == null && metadataJson == null)
+            throw ApiError.bad("Write a message, attach a file or share your location first.");
         String attachmentsJson = att == null ? null : validateAttachment(att);
         Principal user = Ctx.user();
         if (user.role.equals("DOCTOR") && !access.grantIsLive(
@@ -103,17 +106,10 @@ public class ConnectController {
             throw new ApiError(403, "Your access to this patient is no longer active.");
         }
         String messageId = J.uuid();
-        if (attachmentsJson == null) {
-            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
-                            + "created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
-                    text.substring(0, Math.min(4000, text.length())), J.ts());
-        } else {
-            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
-                            + "attachments, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
-                    text.substring(0, Math.min(4000, text.length())), attachmentsJson, J.ts());
-        }
+        db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
+                        + "attachments, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
+                text.substring(0, Math.min(4000, text.length())), attachmentsJson, metadataJson, J.ts());
         db.exec("UPDATE conversations SET updated_at = ? WHERE id = ?", J.ts(), id);
         Map<String, Object> message = Views.message(db,
                 db.require("SELECT * FROM messages WHERE id = ?", messageId));
@@ -150,6 +146,27 @@ public class ConnectController {
             return J.JSON.writeValueAsString(List.of(stored));
         } catch (Exception ignored) {
             throw ApiError.bad("The attachment could not be processed.");
+        }
+    }
+
+    /** Validate a shared location and serialize it for the metadata column. */
+    private String validateLocation(Map<String, Object> loc) {
+        double lat = loc.get("lat") instanceof Number n1 ? n1.doubleValue() : Double.NaN;
+        double lng = loc.get("lng") instanceof Number n2 ? n2.doubleValue() : Double.NaN;
+        if (!Double.isFinite(lat) || !Double.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            throw ApiError.bad("Invalid location coordinates.");
+        }
+        String label = J.gs(loc, "label").trim();
+        if (label.isEmpty()) label = "Shared location";
+        Map<String, Object> md = new LinkedHashMap<>();
+        md.put("type", "location");
+        md.put("lat", lat);
+        md.put("lng", lng);
+        md.put("label", label.substring(0, Math.min(120, label.length())));
+        try {
+            return J.JSON.writeValueAsString(md);
+        } catch (Exception ignored) {
+            throw ApiError.bad("The location could not be processed.");
         }
     }
 

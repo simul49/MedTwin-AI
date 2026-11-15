@@ -210,6 +210,13 @@ export interface MessageAttachment {
   data: string;
 }
 
+export interface MessageLocation {
+  type: 'location';
+  lat: number;
+  lng: number;
+  label: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'USER' | 'AI' | 'DOCTOR' | 'SYSTEM';

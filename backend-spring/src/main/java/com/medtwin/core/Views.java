@@ -291,11 +291,21 @@ public final class Views {
                 attachments = null;
             }
         }
+        // Same for the metadata column (shared location etc.).
+        Object metadata = r.get("metadata");
+        if (metadata instanceof String s && !s.isBlank()) {
+            try {
+                metadata = J.JSON.readValue(s, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+            } catch (Exception ignored) {
+                metadata = null;
+            }
+        }
         return J.map(
                 "id", J.s(r.get("id")),
                 "role", J.s(r.get("role")),
                 "body", J.s(r.get("body")),
                 "attachments", attachments,
+                "metadata", metadata,
                 "senderId", J.sn(r.get("sender_id")),
                 "senderName", senderName,
                 "createdAt", J.iso(r.get("created_at")),
