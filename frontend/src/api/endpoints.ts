@@ -149,12 +149,12 @@ export const connect = {
     body: string,
     attachment?: { name: string; type: string; size: number; data: string },
     location?: { lat: number; lng: number; label: string },
-  ) =>
-    api.post<ChatMessage>(`/conversations/${id}/`, {
-      body,
-      ...(attachment ? { attachment } : {}),
-      ...(location ? { location } : {}),
-    }),
+  ) => {
+    const payload: Record<string, unknown> = { body };
+    if (attachment) payload.attachment = attachment;
+    if (location) payload.location = location;
+    return api.post<ChatMessage>(`/conversations/${id}/`, payload);
+  },
   appointments: () => list<Appointment>('/appointments/'),
   createAppointment: (payload: { doctorId: string; scheduledAt: string; reason?: string; durationMin?: number }) =>
     api.post<Appointment>('/appointments/', payload),

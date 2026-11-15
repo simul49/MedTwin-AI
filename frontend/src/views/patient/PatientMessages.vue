@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/auth';
 import { connect } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
 import { useRealtime } from '@/composables/useRealtime';
-import MessageContent from '@/components/chat/MessageContent.vue';
 import type { ChatMessage, Conversation, MessageAttachment } from '@/api/types';
 
 const { t } = useI18n();
@@ -19,7 +18,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 const attachment = ref<MessageAttachment | null>(null);
-const locationDraft = ref<{ lat: number; lng: number; label: string } | null>(null);
+const pendingLocation = ref<{ lat: number; lng: number; label: string } | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const MAX_ATTACHMENT = 8 * 1024 * 1024;
 let timer: number | undefined;
@@ -76,12 +75,12 @@ async function scroll() {
 
 async function send() {
   const body = draft.value.trim();
-  if ((!body && !attachment.value && !locationDraft.value) || !active.value) return;
+  if ((!body && !attachment.value && !pendingLocation.value) || !active.value) return;
   const att = attachment.value;
-  const loc = locationDraft.value;
+  const loc = pendingLocation.value;
   draft.value = '';
   attachment.value = null;
-  locationDraft.value = null;
+  pendingLocation.value = null;
   const message = await connect.sendMessage(active.value.id, body, att ?? undefined, loc ?? undefined);
   messages.value.push(message);
   await scroll();
@@ -113,31 +112,47 @@ function onFile(event: Event) {
   reader.readAsDataURL(file);
 }
 
-function shareLocation() {
-  if (!('geolocation' in navigator)) {
-    error.value = 'Location sharing is not supported in this browser.';
-    return;
-  }
-  error.value = null;
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      locationDraft.value = {
-        lat: Number(position.coords.latitude.toFixed(6)),
-        lng: Number(position.coords.longitude.toFixed(6)),
-        label: 'Current location',
-      };
-    },
-    () => {
-      error.value = 'Location permission was denied — allow it in your browser to share your location.';
-    },
-    { timeout: 10000 },
-  );
-}
-
 function attachmentSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
+}
+
+function shareLocation() {
+  if (!navigator.geolocation) {
+    error.value = 'Your browser does not support location sharing.';
+    return;
+  }
+  error.value = null;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      pendingLocation.value = {
+        lat: Number(pos.coords.latitude.toFixed(6)),
+        lng: Number(pos.coords.longitude.toFixed(6)),
+        label: 'Shared location',
+      };
+    },
+    () => { error.value = 'Location access was denied — allow it in your browser settings to share your position.'; },
+    { enableHighAccuracy: false, timeout: 10000 },
+  );
+}
+
+/** Split text into plain / link segments so URLs become clickable. */
+function linkSegments(text: string): Array<{ kind: 'text' | 'link'; value: string }> {
+  const out: Array<{ kind: 'text' | 'link'; value: string }> = [];
+  const re = /https?:\/\/[^\s<>"')\]]+/g;
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index! > last) out.push({ kind: 'text', value: text.slice(last, m.index) });
+    out.push({ kind: 'link', value: m[0] });
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) out.push({ kind: 'text', value: text.slice(last) });
+  return out.length ? out : [{ kind: 'text', value: text }];
+}
+
+function mapsEmbed(lat: number, lng: number): string {
+  return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
 }
 
 onMounted(async () => {
@@ -284,10 +299,71 @@ onUnmounted(() => {
                     ? 'rounded-br-md bg-brand-600 text-white'
                     : 'rounded-bl-md border border-ink-100 bg-white text-ink-900 shadow-card'"
                 >
-                  <MessageContent
-                    :message="item.message"
-                    :own="item.message.senderId === auth.user?.id"
-                  />
+                  <div v-if="item.message.attachments?.length" class="space-y-1.5">
+                    <template v-for="file in item.message.attachments" :key="file.name">
+                      <template v-if="file.type === 'application/geo'">
+                        <iframe
+                          :src="mapsEmbed(file.lat ?? 0, file.lng ?? 0)"
+                          class="h-40 w-72 max-w-full rounded-xl border border-white/20"
+                          loading="lazy"
+                          :title="file.name"
+                        />
+                        <a
+                          :href="file.data"
+                          target="_blank"
+                          rel="noopener"
+                          class="flex items-center gap-1.5 text-[11px] font-semibold underline"
+                        >
+                          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M12 21s-7-5.6-7-11a7 7 0 1114 0c0 5.4-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
+                            <circle cx="12" cy="10" r="2.5" />
+                          </svg>
+                          {{ file.name }} — open in Maps
+                        </a>
+                      </template>
+                      <img
+                        v-else-if="file.type.startsWith('image/')"
+                        :src="file.data"
+                        :alt="file.name"
+                        class="max-h-56 w-auto max-w-full rounded-xl border border-white/20"
+                      />
+                      <video
+                        v-else-if="file.type.startsWith('video/')"
+                        :src="file.data"
+                        controls
+                        class="max-h-56 w-auto max-w-full rounded-xl"
+                      />
+                      <audio v-else-if="file.type.startsWith('audio/')" :src="file.data" controls class="w-60" />
+                      <a
+                        v-else
+                        :href="file.data"
+                        :download="file.name"
+                        class="flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12px] font-medium"
+                        :class="item.message.senderId === auth.user?.id ? 'bg-white/15 hover:bg-white/25' : 'bg-surface-100 hover:bg-ink-100'"
+                      >
+                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                          <path d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <span class="min-w-0">
+                          <span class="block max-w-44 truncate">{{ file.name }}</span>
+                          <span class="block text-[10px] opacity-70">{{ attachmentSize(file.size) }} · download</span>
+                        </span>
+                      </a>
+                    </template>
+                  </div>
+                  <p v-if="item.message.body" class="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed first:mt-0">
+                    <template v-for="(seg, i) in linkSegments(item.message.body)" :key="i">
+                      <a
+                        v-if="seg.kind === 'link'"
+                        :href="seg.value"
+                        target="_blank"
+                        rel="noopener"
+                        class="underline"
+                        :class="item.message.senderId === auth.user?.id ? 'text-white' : 'text-brand-600'"
+                      >{{ seg.value }}</a>
+                      <template v-else>{{ seg.value }}</template>
+                    </template>
+                  </p>
                   <p class="mt-1 text-[10.5px]" :class="item.message.senderId === auth.user?.id ? 'text-white/70' : 'text-ink-400'">
                     {{ formatDateTime(item.message.createdAt, 'en') }}
                   </p>
@@ -300,29 +376,24 @@ onUnmounted(() => {
         <!-- Composer -->
         <form v-if="active" class="border-t border-ink-100 bg-white px-3.5 py-3" @submit.prevent="send">
           <div
-            v-if="attachment"
+            v-if="attachment || pendingLocation"
             class="mb-2 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-2.5 py-1.5"
           >
-            <span class="text-[11px] font-semibold text-brand-700">{{ attachment.name }}</span>
-            <span class="text-[10px] text-ink-400">{{ attachmentSize(attachment.size) }}</span>
+            <template v-if="attachment">
+              <span class="text-[11px] font-semibold text-brand-700">{{ attachment.name }}</span>
+              <span class="text-[10px] text-ink-400">{{ attachmentSize(attachment.size) }}</span>
+            </template>
+            <template v-else>
+              <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M12 21s-7-5.6-7-11a7 7 0 1114 0c0 5.4-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              <span class="text-[11px] font-semibold text-brand-700">{{ pendingLocation!.lat }}, {{ pendingLocation!.lng }}</span>
+            </template>
             <button
               type="button"
               class="ml-auto text-[11px] font-semibold text-ink-500 hover:text-rose-600"
-              @click="attachment = null"
-            >Remove</button>
-          </div>
-          <div
-            v-if="locationDraft"
-            class="mb-2 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-2.5 py-1.5"
-          >
-            <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            <span class="text-[11px] font-semibold text-brand-700">{{ locationDraft.label }} ({{ locationDraft.lat }}, {{ locationDraft.lng }})</span>
-            <button
-              type="button"
-              class="ml-auto text-[11px] font-semibold text-ink-500 hover:text-rose-600"
-              @click="locationDraft = null"
+              @click="attachment = null; pendingLocation = null"
             >Remove</button>
           </div>
           <input ref="fileInput" type="file" class="hidden" @change="onFile" />
@@ -346,7 +417,7 @@ onUnmounted(() => {
               @click="shareLocation"
             >
               <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 21s-7-5.6-7-11a7 7 0 1114 0c0 5.4-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
             </button>
@@ -354,10 +425,10 @@ onUnmounted(() => {
               v-model="draft"
               rows="1"
               class="input min-h-10 flex-1 resize-none py-2 text-[13px]"
-              placeholder="Write a message… (paste links to share them)"
+              placeholder="Write a message…"
               @keydown.enter.exact.prevent="send"
             />
-            <button class="dash-btn shrink-0 px-4 py-2 text-xs" type="submit" :disabled="!draft.trim() && !attachment && !locationDraft">
+            <button class="dash-btn shrink-0 px-4 py-2 text-xs" type="submit" :disabled="!draft.trim() && !attachment && !pendingLocation">
               {{ t('patient.assistantSend') }}
               <svg class="ml-1 inline-block h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M4 12h15m0 0l-5-5m5 5l-5 5" stroke-linecap="round" stroke-linejoin="round" />

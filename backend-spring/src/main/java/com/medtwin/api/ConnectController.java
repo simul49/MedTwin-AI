@@ -95,21 +95,28 @@ public class ConnectController {
         String text = J.gs(payload, "body").trim();
         Map<String, Object> att = payload.get("attachment") instanceof Map<?, ?> a
                 ? (Map<String, Object>) a : null;
-        String metadataJson = payload.get("location") instanceof Map<?, ?> l
-                ? validateLocation((Map<String, Object>) l) : null;
-        if (text.isEmpty() && att == null && metadataJson == null)
-            throw ApiError.bad("Write a message, attach a file or share your location first.");
+        Map<String, Object> loc = payload.get("location") instanceof Map<?, ?> l
+                ? (Map<String, Object>) l : null;
+        if (text.isEmpty() && att == null && loc == null) throw ApiError.bad("Write a message or attach a file first.");
         String attachmentsJson = att == null ? null : validateAttachment(att);
+        if (attachmentsJson == null && loc != null) attachmentsJson = locationAttachment(loc);
         Principal user = Ctx.user();
         if (user.role.equals("DOCTOR") && !access.grantIsLive(
                 access.activeGrant(user.id, J.s(conversation.get("patient_id"))))) {
             throw new ApiError(403, "Your access to this patient is no longer active.");
         }
         String messageId = J.uuid();
-        db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
-                        + "attachments, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
-                text.substring(0, Math.min(4000, text.length())), attachmentsJson, metadataJson, J.ts());
+        if (attachmentsJson == null) {
+            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
+                            + "created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
+                    text.substring(0, Math.min(4000, text.length())), J.ts());
+        } else {
+            db.exec("INSERT INTO messages (id, conversation_id, sender_id, role, body, "
+                            + "attachments, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
+                    text.substring(0, Math.min(4000, text.length())), attachmentsJson, J.ts());
+        }
         db.exec("UPDATE conversations SET updated_at = ? WHERE id = ?", J.ts(), id);
         Map<String, Object> message = Views.message(db,
                 db.require("SELECT * FROM messages WHERE id = ?", messageId));
@@ -125,6 +132,28 @@ public class ConnectController {
         return ResponseEntity.status(201).body(message);
     }
 
+    /** Wrap a shared geographic position as a location attachment. */
+    private String locationAttachment(Map<String, Object> loc) {
+        double lat = loc.get("lat") instanceof Number n ? n.doubleValue() : Double.NaN;
+        double lng = loc.get("lng") instanceof Number n ? n.doubleValue() : Double.NaN;
+        if (Double.isNaN(lat) || Double.isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            throw ApiError.bad("The shared location is not valid.");
+        }
+        String label = J.gs(loc, "label").trim();
+        Map<String, Object> stored = new LinkedHashMap<>();
+        stored.put("name", label.isEmpty() ? "Shared location" : label);
+        stored.put("type", "application/geo");
+        stored.put("size", 0);
+        stored.put("lat", lat);
+        stored.put("lng", lng);
+        stored.put("data", "https://www.google.com/maps?q=" + lat + "," + lng);
+        try {
+            return J.JSON.writeValueAsString(List.of(stored));
+        } catch (Exception ignored) {
+            throw ApiError.bad("The location could not be processed.");
+        }
+    }
+
     /** Validate and wrap a single attachment as a JSON array for storage. */
     private String validateAttachment(Map<String, Object> att) {
         String name = J.gs(att, "name").trim();
@@ -134,8 +163,7 @@ public class ConnectController {
         if (!data.startsWith("data:")) throw ApiError.bad("Unsupported attachment encoding.");
         boolean allowed = type.startsWith("image/") || type.startsWith("video/")
                 || type.startsWith("audio/") || type.equals("application/pdf") || type.startsWith("text/");
-        if (!allowed) throw ApiError.bad("This file type cannot be sent in messages. Images, video, audio, PDF and text files are supported.");
-        long size = att.get("size") instanceof Number n ? n.longValue() : data.length();
+        if (!allowed) throw ApiError.bad("This file type cannot be sent in messages. Images, video, audio, PDF and text files are supported.");        long size = att.get("size") instanceof Number n ? n.longValue() : data.length();
         if (size > MAX_ATTACHMENT_BYTES) throw ApiError.bad("Attachment is too large — the maximum is 8 MB.");
         Map<String, Object> stored = new LinkedHashMap<>();
         stored.put("name", name.substring(0, Math.min(180, name.length())));
@@ -146,27 +174,6 @@ public class ConnectController {
             return J.JSON.writeValueAsString(List.of(stored));
         } catch (Exception ignored) {
             throw ApiError.bad("The attachment could not be processed.");
-        }
-    }
-
-    /** Validate a shared location and serialize it for the metadata column. */
-    private String validateLocation(Map<String, Object> loc) {
-        double lat = loc.get("lat") instanceof Number n1 ? n1.doubleValue() : Double.NaN;
-        double lng = loc.get("lng") instanceof Number n2 ? n2.doubleValue() : Double.NaN;
-        if (!Double.isFinite(lat) || !Double.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-            throw ApiError.bad("Invalid location coordinates.");
-        }
-        String label = J.gs(loc, "label").trim();
-        if (label.isEmpty()) label = "Shared location";
-        Map<String, Object> md = new LinkedHashMap<>();
-        md.put("type", "location");
-        md.put("lat", lat);
-        md.put("lng", lng);
-        md.put("label", label.substring(0, Math.min(120, label.length())));
-        try {
-            return J.JSON.writeValueAsString(md);
-        } catch (Exception ignored) {
-            throw ApiError.bad("The location could not be processed.");
         }
     }
 

@@ -208,13 +208,8 @@ export interface MessageAttachment {
   type: string;
   size: number;
   data: string;
-}
-
-export interface MessageLocation {
-  type: 'location';
-  lat: number;
-  lng: number;
-  label: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface ChatMessage {
