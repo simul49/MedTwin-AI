@@ -133,14 +133,15 @@ interface ReadingField {
   unit: string;
   obsLabel: string;
   placeholder: string;
+  range: string;
   normal: (v: number) => string;
 }
 
 const READING_FIELDS: ReadingField[] = [
-  { key: 'heart', label: 'Heart rate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
-  { key: 'bp', label: 'Blood pressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
-  { key: 'spo2', label: 'SpO₂', unit: '%', obsLabel: 'SpO2', placeholder: '97', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
-  { key: 'glucose', label: 'Blood glucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
+  { key: 'heart', label: 'Heart rate', unit: 'bpm', obsLabel: 'Heart rate', placeholder: '72', range: '50 - 110', normal: (v) => (v >= 50 && v <= 110 ? 'NORMAL' : 'HIGH') },
+  { key: 'bp', label: 'Blood pressure', unit: 'mmHg', obsLabel: 'Blood pressure', placeholder: '132', range: '90 - 130', normal: (v) => (v >= 90 && v <= 130 ? 'NORMAL' : v < 90 ? 'LOW' : 'HIGH') },
+  { key: 'spo2', label: 'SpO₂', unit: '%', obsLabel: 'SpO2', placeholder: '97', range: '94 - 100', normal: (v) => (v >= 94 ? 'NORMAL' : v >= 90 ? 'LOW' : 'CRITICAL') },
+  { key: 'glucose', label: 'Blood glucose', unit: 'mmol/L', obsLabel: 'Blood glucose', placeholder: '5.5', range: '3.9 - 7.8', normal: (v) => (v >= 4 && v <= 7.8 ? 'NORMAL' : 'HIGH') },
 ];
 
 const readings = ref<Record<string, string>>({ heart: '', bp: '', spo2: '', glucose: '' });
@@ -152,6 +153,7 @@ async function saveReadings() {
     value: readings.value[f.key].trim(),
     unit: f.unit,
     flag: f.normal(Number(readings.value[f.key])),
+    reference_range: f.range,
   }));
   if (!payload.length) return;
   savingReading.value = true;
