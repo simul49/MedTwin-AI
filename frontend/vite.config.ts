@@ -18,13 +18,28 @@ export default defineConfig({
   plugins: [
     vue(),
     {
-      // Serve the dev entry at "/" since the root index.html is the
-      // CI-published built app (used by GitHub Pages).
+      // The root index.html is the landing page; the app dev entry is dev.html.
+      // Serve the app at "/" and fall back to it for SPA routes (/login, ...)
+      // so vue-router history mode works in dev. /index.html stays the landing.
       name: 'serve-dev-entry',
       apply: 'serve',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/') req.url = '/dev.html';
+          const url = (req.url || '').split('?')[0];
+          const isViteInternal =
+            url.startsWith('/@') ||
+            url.startsWith('/.vite') ||
+            url.startsWith('/node_modules');
+          const isOtherAsset =
+            url.includes('.') ||
+            url.startsWith('/api') ||
+            url.startsWith('/ws') ||
+            url.startsWith('/site');
+          if (url === '/' || url === '/dev.html') {
+            req.url = '/dev.html';
+          } else if (!isViteInternal && !isOtherAsset && url !== '/index.html') {
+            req.url = '/dev.html';
+          }
           next();
         });
       },
