@@ -9,8 +9,27 @@ export default defineConfig({
     // Keep build output in frontend/dist (used by nginx in Docker).
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
     emptyOutDir: true,
+    // The dev entry is dev.html; CI renames the built output to index.html
+    // and publishes it at the repo root for GitHub Pages.
+    rollupOptions: {
+      input: fileURLToPath(new URL('../dev.html', import.meta.url)),
+    },
   },
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    {
+      // Serve the dev entry at "/" since the root index.html is the
+      // CI-published built app (used by GitHub Pages).
+      name: 'serve-dev-entry',
+      apply: 'serve',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === '/') req.url = '/dev.html';
+          next();
+        });
+      },
+    },
+  ],
   css: {
     // Vite searches for postcss.config.js from the project root, which is the
     // repo root now — point it back at the frontend folder explicitly.
