@@ -42,6 +42,16 @@ def answer_question(*, user, message: str, conversation=None, language: str = "e
     clinical = getattr(user, "role", "") == "DOCTOR"
     passages = [] if casual else retrieval.retrieve(message, top_k=5, clinical=clinical)
 
+    # Personal documents are the most relevant grounding for "what does my
+    # report say" questions — searched first, then capped below.
+    if not casual and getattr(user, "role", "") == "PATIENT":
+        try:
+            doc_passages = retrieval.retrieve_patient_documents(user, message, top_k=2)
+        except Exception:
+            logger.warning("patient document retrieval failed", exc_info=True)
+            doc_passages = []
+        passages = doc_passages + passages[:3]
+
     twin_context: Dict[str, list] = {}
     if (
         not casual

@@ -151,15 +151,20 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-// Pre-fill the composer when arriving from another page (e.g. a recommendation card).
+// Pre-fill the composer when arriving from another page (e.g. a recommendation card
+// or the "Ask the AI" button on a document). A query is sent immediately so the
+// answer is ready when the user lands (real-time document Q&A).
 const route = useRoute();
 const router = useRouter();
 onMounted(() => {
   const prefill = typeof route.query.q === 'string' ? route.query.q.trim() : '';
   if (prefill) {
     draft.value = prefill;
-    nextTick(() => textareaEl.value?.focus());
     router.replace({ query: { ...route.query, q: undefined } });
+    nextTick(() => {
+      textareaEl.value?.focus();
+      void send(prefill);
+    });
   }
 });
 

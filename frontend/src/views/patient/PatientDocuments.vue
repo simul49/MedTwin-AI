@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { patient } from '@/api/endpoints';
 import { formatBytes, formatDateTime } from '@/composables/useAsync';
 import type { DocumentRecord } from '@/api/types';
 
 const { t } = useI18n();
+const router = useRouter();
 
 const documents = ref<DocumentRecord[]>([]);
 const selected = ref<DocumentRecord | null>(null);
@@ -16,6 +18,16 @@ const error = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const category = ref('OTHER');
 const attachedMsg = ref('');
+
+function askAi() {
+  if (!selected.value) return;
+  router.push({
+    path: '/patient/assistant',
+    query: {
+      q: `What does my document "${selected.value.name}" say? Summarize the key medical information in it.`,
+    },
+  });
+}
 
 async function load() {
   loading.value = true;
@@ -255,6 +267,13 @@ onMounted(load);
           </div>
           <button class="dash-btn mt-4 w-full" :disabled="!selected?.extractions?.length" @click="attachAll">
             Attach document to your digital twin records
+          </button>
+          <button
+            v-if="selected && selected.processingStatus === 'PROCESSED'"
+            class="btn-secondary mt-2 w-full text-xs"
+            @click="askAi"
+          >
+            Ask the AI assistant about this document
           </button>
           <p
             v-if="selected && !selected?.extractions?.length && selected.processingStatus === 'PROCESSED'"

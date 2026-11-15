@@ -142,6 +142,107 @@ def retrieve(
     return [p for p in passages[:top_k] if p.score >= min_score]
 
 
+def _best_window(text: str, query_tokens: set, size: int = 600) -> str:
+    """Return the ~``size``-char window of the text with the most query matches."""
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    best, best_score = "", -1
+    window: List[str] = []
+    length = 0
+    for line in lines:
+        window.append(line)
+        length += len(line) + 1
+        while length > size and window:
+            length -= len(window[0]) + 1
+            window.pop(0)
+        candidate = " ".join(window)
+        score = len(query_tokens & set(tokenize(candidate)))
+        # '>=' prefers the largest window on ties, so matched lines keep
+        # their following context instead of truncating at the first hit.
+        if score >= best_score:
+            best_score, best = score, candidate
+    return best or text[:size]
+
+
+def retrieve_patient_documents(patient, query: str, top_k: int = 2, min_score: float = 0.3) -> List[Passage]:
+    """Search the patient's own uploaded documents (OCR/text extraction output).
+
+    Personal context: only the caller's own PROCESSED documents are searched,
+    and the passage is clearly titled so the UI cites it as a personal document
+    rather than medical literature (PRD §11.3 data minimisation).
+    """
+    from apps.twin.models import Document
+
+    query_tokens = set(tokenize(query))
+    if not query_tokens:
+        return []
+
+    docs = list(
+        patient.documents.filter(processing_status="PROCESSED")
+        .exclude(extracted_text__isnull=True)
+        .order_by("-created_at")[:30]
+    )
+
+    passages: List[Passage] = []
+    seen_content: set = set()
+    for doc in docs:
+        text = (doc.extracted_text or "").strip()
+        if not text or len(text) < 60:
+            continue
+        # Re-uploads of the same file are common — keep the most recent copy.
+        content_key = re.sub(r"\s+", "", text[:120].lower())
+        if content_key in seen_content:
+            continue
+        seen_content.add(content_key)
+        # Match on both the document name (e.g. a quoted filename in the
+        # question) and its extracted content.
+        doc_tokens = set(tokenize(doc.name)) | set(tokenize(text))
+        overlap = len(query_tokens & doc_tokens)
+        score = overlap / len(query_tokens)
+        if score < min_score or overlap < 2:
+            continue
+        passages.append(
+            Passage(
+                chunk_id=f"doc:{doc.id}",
+                text=_best_window(text, query_tokens),
+                score=score,
+                source_id="",
+                source_title="Your uploaded documents",
+                publisher="",
+                source_url="",
+                title=f"Document: {doc.name}",
+                review_status="PERSONAL",
+            )
+        )
+
+    passages.sort(key=lambda p: p.score, reverse=True)
+
+    # Generic phrasing ("summarize my document") carries no content tokens —
+    # fall back to the most recent processed document so the question still
+    # gets a real answer in real time.
+    if not passages:
+        intent_words = {"document", "doc", "report", "prescription", "summary",
+                        "summarize", "scan", "file", "upload", "uploaded", "record"}
+        if query_tokens & intent_words and docs:
+            doc = docs[0]
+            text = (doc.extracted_text or "").strip()
+            if text:
+                passages.append(
+                    Passage(
+                        chunk_id=f"doc:{doc.id}",
+                        text=text[:600],
+                        score=0.3,
+                        source_id="",
+                        source_title="Your uploaded documents",
+                        publisher="",
+                        source_url="",
+                        title=f"Document: {doc.name}",
+                        review_status="PERSONAL",
+                    )
+                )
+
+    return passages[:top_k]
+
+
 def build_twin_context(patient, categories: Optional[List[str]] = None) -> Dict[str, list]:
     """Collect the patient's own authorised context for grounding.
 
