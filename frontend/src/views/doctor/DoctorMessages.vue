@@ -50,9 +50,13 @@ async function send() {
   }
 }
 
-function pickFile() {
+function pickFile(accept: string) {
+  fileAccept.value = accept;
   fileInput.value?.click();
 }
+
+const fileAccept = ref('');
+const showMore = ref(false);
 
 function onFile(event: Event) {
   const input = event.target as HTMLInputElement;
@@ -352,22 +356,28 @@ onUnmounted(() => {
             >Remove</button>
           </div>
           <p v-if="sendError" class="mb-2 text-[11.5px] font-medium text-rose-600">{{ sendError }}</p>
-          <input ref="fileInput" type="file" accept="image/*,video/*,audio/*,application/pdf,text/*" class="hidden" @change="onFile" />
-          <!-- WeChat-style toolbar -->
-          <div class="relative flex items-center gap-0.5">
+          <input ref="fileInput" type="file" :accept="fileAccept" class="hidden" @change="onFile" />
+          <!-- Composer toolbar: media buttons left, send + more right -->
+          <div class="relative flex items-center gap-1.5">
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2 py-2 text-[17px] leading-none"
-              title="Emoji"
-              aria-label="Insert emoji"
-              @click="showEmoji = !showEmoji"
-            >😀</button>
+              class="btn-ghost shrink-0 rounded-full px-2 py-2"
+              title="Send a photo or video (max 8 MB)"
+              aria-label="Send photo or video"
+              @click="pickFile('image/*,video/*')"
+            >
+              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2.5" />
+                <circle cx="9" cy="9.5" r="1.8" />
+                <path d="M3.5 17l4.5-4.5 3.5 3.5 4-4 5.5 5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2 py-2"
-              title="Send a picture or video (max 8 MB)"
+              class="btn-ghost shrink-0 rounded-full px-2 py-2"
+              title="Attach any file (max 8 MB)"
               aria-label="Attach file"
-              @click="pickFile"
+              @click="pickFile('audio/*,application/pdf,text/*')"
             >
               <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l8.5-8.5a3.5 3.5 0 015 5L10.5 19a2 2 0 01-3-3l8-8" stroke-linecap="round" stroke-linejoin="round" />
@@ -375,45 +385,83 @@ onUnmounted(() => {
             </button>
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2 py-2"
-              title="Share your current location"
-              aria-label="Share location"
-              @click="shareLocation"
+              class="btn-ghost shrink-0 rounded-full px-1.5 py-1.5"
+              title="Send a GIF (max 8 MB)"
+              aria-label="Send GIF"
+              @click="pickFile('image/gif')"
             >
-              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M12 21s-7-5.6-7-11a7 7 0 1114 0c0 5.4-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="12" cy="10" r="2.5" />
-              </svg>
+              <span class="rounded-md border-[1.5px] border-current px-1 py-0.5 text-[9px] font-extrabold tracking-tight">GIF</span>
             </button>
             <button
               type="button"
-              class="btn-ghost shrink-0 px-2 py-2"
-              :class="recording ? 'text-rose-600' : ''"
-              :title="recording ? `Recording… ${recordSeconds}s — tap to send` : 'Record a voice message'"
-              :aria-label="recording ? 'Stop and send voice message' : 'Record voice message'"
-              @click="toggleRecording"
-            >
-              <svg v-if="!recording" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <rect x="9" y="3" width="6" height="11" rx="3" stroke-linecap="round" />
-                <path d="M5 11a7 7 0 0014 0M12 18v3" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span v-else class="flex h-4.5 w-4.5 items-center justify-center">
-                <span class="h-3 w-3 animate-pulse rounded-full bg-rose-600" />
-              </span>
-            </button>
+              class="btn-ghost shrink-0 rounded-full px-2 py-2 text-[17px] leading-none"
+              title="Emoji"
+              aria-label="Insert emoji"
+              @click="showEmoji = !showEmoji; showMore = false"
+            >😀</button>
+            <span v-if="recording" class="ml-1 text-[11px] font-semibold text-rose-600">● {{ recordSeconds }}s — tap ⋯ → mic to stop</span>
+            <textarea
+              v-model="draft"
+              rows="1"
+              class="input min-h-10 flex-1 resize-none py-2 text-[13px]"
+              placeholder="Write a message…"
+              @keydown.enter.exact.prevent="send"
+            />
             <button
-              type="button"
-              class="btn-ghost shrink-0 px-2 py-2"
-              title="Start or join a video consultation"
-              aria-label="Video call"
-              @click="startVideoCall"
-            >
-              <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <rect x="3" y="6" width="12" height="12" rx="2.5" />
-                <path d="M15 10.5l5.5-3v9l-5.5-3" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-            <span v-if="recording" class="ml-1.5 text-[11px] font-semibold text-rose-600">● {{ recordSeconds }}s — tap mic to send</span>
+              class="btn-primary shrink-0 rounded-full px-5 py-2 text-xs"
+              type="submit"
+              :disabled="!draft.trim() && !attachment && !pendingLocation"
+            >{{ t('patient.assistantSend') }}</button>
+            <div class="relative shrink-0">
+              <button
+                type="button"
+                class="btn-ghost rounded-full px-2 py-2 text-[15px] font-bold leading-none"
+                :class="recording ? 'text-rose-600' : ''"
+                title="More: location, voice message, video call"
+                aria-label="More actions"
+                @click="showMore = !showMore; showEmoji = false"
+              >⋯</button>
+              <!-- More menu -->
+              <div
+                v-if="showMore"
+                class="absolute bottom-11 right-0 z-10 w-56 rounded-2xl border border-ink-200 bg-white p-1.5 shadow-card"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-ink-700 hover:bg-ink-50"
+                  @click="shareLocation(); showMore = false"
+                >
+                  <svg class="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M12 21s-7-5.6-7-11a7 7 0 1114 0c0 5.4-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="12" cy="10" r="2.5" />
+                  </svg>
+                  Share location
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium"
+                  :class="recording ? 'text-rose-600' : 'text-ink-700 hover:bg-ink-50'"
+                  @click="toggleRecording(); showMore = false"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="9" y="3" width="6" height="11" rx="3" stroke-linecap="round" />
+                    <path d="M5 11a7 7 0 0014 0M12 18v3" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  {{ recording ? `Stop & send (${recordSeconds}s)` : 'Voice message' }}
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-ink-700 hover:bg-ink-50"
+                  @click="startVideoCall(); showMore = false"
+                >
+                  <svg class="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="3" y="6" width="12" height="12" rx="2.5" />
+                    <path d="M15 10.5l5.5-3v9l-5.5-3" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  Video call
+                </button>
+              </div>
+            </div>
             <!-- Emoji popover -->
             <div
               v-if="showEmoji"
@@ -434,18 +482,6 @@ onUnmounted(() => {
                 @click="showEmoji = false"
               >Close</button>
             </div>
-            <textarea
-              v-model="draft"
-              rows="1"
-              class="input ml-1.5 min-h-10 flex-1 resize-none py-2 text-[13px]"
-              placeholder="Write a message…"
-              @keydown.enter.exact.prevent="send"
-            />
-            <button
-              class="btn-primary shrink-0 px-4 py-2 text-xs"
-              type="submit"
-              :disabled="!draft.trim() && !attachment && !pendingLocation"
-            >{{ t('patient.assistantSend') }}</button>
           </div>
         </form>
       </div>
