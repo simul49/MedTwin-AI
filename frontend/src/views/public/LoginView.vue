@@ -183,24 +183,22 @@ function switchPortal(role: string) {
       </div>
 
       <!-- Trust strip -->
-      <div class="relative mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/10 pt-6">
+      <div class="relative mt-10 space-y-2.5 border-t border-white/10 pt-6">
         <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
-          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="h-4 w-4 shrink-0 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M9.5 12l2 2 3.5-3.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           End-to-end encrypted
         </p>
-        <span class="h-1 w-1 rounded-full bg-white/25" />
         <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
-          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="h-4 w-4 shrink-0 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Consent-controlled records
         </p>
-        <span class="h-1 w-1 rounded-full bg-white/25" />
         <p class="flex items-center gap-2 text-[12px] font-semibold text-white/75">
-          <svg class="h-4 w-4 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="h-4 w-4 shrink-0 text-brand-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="9" />
             <path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
