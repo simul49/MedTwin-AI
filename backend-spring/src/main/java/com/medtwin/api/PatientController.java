@@ -469,7 +469,7 @@ public class PatientController {
                                                 @PathVariable String extractionId,
                                                 @RequestBody(required = false) Map<String, Object> body) {
         Map<String, Object> document = db.one(
-                "SELECT id FROM documents WHERE id = ? AND patient_id = ?", documentId, Ctx.user().id);
+                "SELECT id, patient_id FROM documents WHERE id = ? AND patient_id = ?", documentId, Ctx.user().id);
         Map<String, Object> item = db.one("SELECT * FROM document_extractions "
                 + "WHERE id = ? AND document_id = ?", extractionId, documentId);
         if (document == null || item == null) throw ApiError.notFound("Not found.");
@@ -486,10 +486,42 @@ public class PatientController {
             db.exec("UPDATE document_extractions SET review_status = ? WHERE id = ?",
                     status, extractionId);
         }
+        if (!status.equals("REJECTED")) {
+            attachToTwin(document, item);
+        }
         audit.log("EXTRACTION_REVIEW", "document_extraction", extractionId, "SUCCESS",
                 J.map("status", status));
         return Views.extraction(db.require(
                 "SELECT * FROM document_extractions WHERE id = ?", extractionId));
+    }
+
+    /**
+     * A confirmed/corrected extraction becomes a Digital Twin record — the bridge
+     * between document extraction and the twin. Stored with source_type EXTRACTED,
+     * verification_status USER_CONFIRMED and a link back to the source document.
+     * Idempotent: one twin record per document+field label.
+     */
+    private void attachToTwin(Map<String, Object> document, Map<String, Object> item) {
+        String field = J.s(item.get("field_name"));
+        if (field.equals("document_date")) return;
+        String documentId = J.s(document.get("id"));
+        String label = J.s(item.get("label"));
+        if (db.one("SELECT id FROM health_records WHERE source_document_id = ? AND title = ? LIMIT 1",
+                documentId, label) != null) return;
+        String category = Set.of("blood_pressure", "heart_rate", "weight", "height").contains(field)
+                ? "VITAL" : "LAB_RESULT";
+        String value = J.s(item.get("value"));
+        db.exec("INSERT INTO health_records (id, patient_id, category, title, summary, payload, "
+                        + "source_type, verification_status, source_document_id, recorded_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, 'EXTRACTED', 'USER_CONFIRMED', ?, NOW(3))",
+                J.uuid(), J.s(document.get("patient_id")), category, label,
+                label + ": " + value,
+                J.toJson(J.map("value", value, "confidence", item.get("confidence"),
+                        "evidence", J.s(item.get("evidence")), "field", field,
+                        "extractionId", J.s(item.get("id")))),
+                documentId);
+        audit.log("TWIN_RECORD_EXTRACTED", "health_record", documentId, "SUCCESS",
+                J.map("field", field, "value", value, "category", category));
     }
 
     private Map<String, Object> visibleDocument(String id) {

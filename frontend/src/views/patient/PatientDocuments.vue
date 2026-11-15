@@ -15,6 +15,7 @@ const dragging = ref(false);
 const error = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const category = ref('OTHER');
+const attachedMsg = ref('');
 
 async function load() {
   loading.value = true;
@@ -67,6 +68,9 @@ async function review(extractionId: string, status: string, value?: string) {
 
 async function attachAll() {
   if (!selected.value?.extractions) return;
+  const pending = selected.value.extractions.filter(
+    (item) => item.reviewStatus === 'PENDING' || item.reviewStatus === 'NEEDS_REVIEW',
+  ).length;
   for (const item of selected.value.extractions) {
     if (item.reviewStatus === 'PENDING' || item.reviewStatus === 'NEEDS_REVIEW') {
       await patient.reviewExtraction(selected.value.id, item.id, 'CONFIRMED');
@@ -74,6 +78,9 @@ async function attachAll() {
   }
   selected.value = await patient.document(selected.value.id);
   await load();
+  if (pending > 0) {
+    attachedMsg.value = `Added ${pending} value${pending === 1 ? '' : 's'} to your Digital Twin records — see them under Records.`;
+  }
 }
 
 async function remove(document: DocumentRecord) {
@@ -233,6 +240,7 @@ onMounted(load);
           <button class="dash-btn mt-4 w-full" :disabled="!selected?.extractions?.length" @click="attachAll">
             Attach document to your digital twin records
           </button>
+          <p v-if="attachedMsg" class="mt-2 text-center text-[11px] font-semibold text-brand-700">{{ attachedMsg }}</p>
         </div>
 
         <div v-if="selected?.extractions?.length" class="dash-card dash-card-pad">
