@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   ChatResponse,
   ConsentGrant,
+  Consultation,
   Conversation,
   DigitalTwin,
   DocumentRecord,
@@ -13,6 +14,7 @@ import type {
   HealthRecord,
   KnowledgeSource,
   NotificationItem,
+  Payment,
   Recommendation,
   Safety,
   SystemHealth,
@@ -151,6 +153,25 @@ export const connect = {
   notifications: () => api.get<{ unread: number; results: NotificationItem[] }>('/notifications/'),
   markRead: (id: string) => api.post(`/notifications/${id}/read/`),
   markAllRead: () => api.post('/notifications/read-all/'),
+};
+
+// --- paid consultations & payments -------------------------------------------
+export const consultations = {
+  list: () => list<Consultation>('/consultations/'),
+  create: (payload: { doctorId: string; appointmentId?: string; feeAmount?: number }) =>
+    api.post<Consultation>('/consultations/', payload),
+  detail: (id: string) => api.get<Consultation>(`/consultations/${id}/`),
+  join: (id: string) => api.post<Consultation & { room: string }>(`/consultations/${id}/join/`, {}),
+  prescribe: (id: string, prescriptionNote: string) =>
+    api.post<Consultation>(`/consultations/${id}/prescribe/`, { prescriptionNote }),
+  cancel: (id: string) => api.post<Consultation>(`/consultations/${id}/cancel/`, {}),
+};
+
+export const payments = {
+  list: () => list<Payment>('/payments/'),
+  checkout: (payload: { consultationId: string; cardNumber: string; cardName: string; expiry: string; cvc: string }) =>
+    api.post<Payment & { consultation: Consultation }>('/payments/checkout/', payload),
+  receipt: (id: string) => api.get<Payment & { consultation?: Record<string, unknown> }>(`/payments/${id}/receipt/`),
 };
 
 // --- doctor ------------------------------------------------------------------

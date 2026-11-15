@@ -327,3 +327,54 @@ export interface SystemHealth {
   models: { id: string; name: string; version: string; provider: string; kind: string; isActive: boolean }[];
   generatedAt: string | null;
 }
+
+export type ConsultationStatus =
+  | 'SCHEDULED'
+  | 'PAYMENT_PENDING'
+  | 'PAID'
+  | 'WAITING_ROOM'
+  | 'LIVE'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export interface Consultation {
+  id: string;
+  appointmentId: string | null;
+  status: ConsultationStatus;
+  feeAmount: number;
+  feeCurrency: string;
+  roomCode: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  prescriptionNote: string | null;
+  createdAt: string | null;
+  doctor: { id: string; name: string; avatarColor: string } | null;
+  patient: { id: string; name: string; avatarColor: string } | null;
+  payment: {
+    id: string;
+    status: string;
+    amount: number;
+    currency: string;
+    receiptNo: string | null;
+    cardLast4: string | null;
+    createdAt: string | null;
+  } | null;
+}
+
+export interface Payment {
+  id: string;
+  consultationId: string | null;
+  appointmentId: string | null;
+  amount: number;
+  currency: string;
+  purpose: string;
+  method: string;
+  provider: string;
+  providerRef: string | null;
+  cardLast4: string | null;
+  status: string;
+  receiptNo: string | null;
+  createdAt: string | null;
+  payerName: string | null;
+  payee: { id: string; name: string; avatarColor: string } | null;
+}

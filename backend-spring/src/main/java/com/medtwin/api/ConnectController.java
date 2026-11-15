@@ -18,11 +18,13 @@ public class ConnectController {
     private final Db db;
     private final Access access;
     private final Audit audit;
+    private final Realtime realtime;
 
-    public ConnectController(Db db, Access access, Audit audit) {
+    public ConnectController(Db db, Access access, Audit audit, Realtime realtime) {
         this.db = db;
         this.access = access;
         this.audit = audit;
+        this.realtime = realtime;
     }
 
     @GetMapping("/conversations/")
@@ -99,8 +101,18 @@ public class ConnectController {
                 messageId, id, user.id, user.role.equals("DOCTOR") ? "DOCTOR" : "USER",
                 text.substring(0, Math.min(4000, text.length())), J.ts());
         db.exec("UPDATE conversations SET updated_at = ? WHERE id = ?", J.ts(), id);
-        return ResponseEntity.status(201).body(Views.message(db,
-                db.require("SELECT * FROM messages WHERE id = ?", messageId)));
+        Map<String, Object> message = Views.message(db,
+                db.require("SELECT * FROM messages WHERE id = ?", messageId));
+        // real-time: deliver the message to the counterpart instantly
+        String counterpart = user.role.equals("PATIENT")
+                ? J.s(conversation.get("doctor_id")) : J.s(conversation.get("patient_id"));
+        if (counterpart != null && !counterpart.isBlank()) {
+            realtime.pushToUser(counterpart, J.map(
+                    "type", "message",
+                    "conversationId", id,
+                    "message", message));
+        }
+        return ResponseEntity.status(201).body(message);
     }
 
     private Map<String, Object> visibleConversation(String id) {
@@ -234,6 +246,9 @@ public class ConnectController {
             db.exec("INSERT INTO notifications (id, user_id, type, title, body, link, "
                             + "is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
                     J.uuid(), userId, type, title, body, link, J.ts());
+            realtime.pushToUser(userId, J.map(
+                    "type", "notification",
+                    "notification", J.map("type", type, "title", title, "body", body, "link", link)));
         } catch (Exception ignored) {
             // best-effort
         }

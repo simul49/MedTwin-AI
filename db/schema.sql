@@ -484,6 +484,66 @@ CREATE TABLE IF NOT EXISTS feature_flags (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- Paid consultations (video advice / prescriptions) and the payment ledger
+-- -----------------------------------------------------------------------------
+-- A consultation is created when a patient books paid time with a doctor.
+-- It follows a simple lifecycle: SCHEDULED → PAYMENT_PENDING → PAID →
+-- WAITING_ROOM → LIVE → COMPLETED. The doctor issues advice / a prescription
+-- note when the call ends; admin can see the ledger, never the room.
+CREATE TABLE IF NOT EXISTS consultations (
+  id             VARCHAR(36) NOT NULL,
+  appointment_id VARCHAR(36) NULL,
+  patient_id     VARCHAR(36) NOT NULL,
+  doctor_id      VARCHAR(36) NULL,
+  status         ENUM('SCHEDULED','PAYMENT_PENDING','PAID','WAITING_ROOM','LIVE','COMPLETED','CANCELLED')
+                 NOT NULL DEFAULT 'PAYMENT_PENDING',
+  fee_amount     DECIMAL(10,2) NOT NULL DEFAULT 0,
+  fee_currency   VARCHAR(3) NOT NULL DEFAULT 'USD',
+  room_code      VARCHAR(20) NULL,
+  started_at     DATETIME NULL,
+  ended_at       DATETIME NULL,
+  prescription_note TEXT NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_consult_room (room_code),
+  KEY ix_consult_patient (patient_id, created_at),
+  KEY ix_consult_doctor (doctor_id, created_at),
+  CONSTRAINT fk_consult_appt    FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE SET NULL,
+  CONSTRAINT fk_consult_patient FOREIGN KEY (patient_id)     REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_consult_doctor  FOREIGN KEY (doctor_id)      REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment ledger. `provider` keeps the gateway name (DEMO_GATEWAY today, a
+-- Stripe/PayPal provider id tomorrow) and `provider_ref` its transaction id,
+-- so swapping in a real gateway later does not change the schema.
+CREATE TABLE IF NOT EXISTS payments (
+  id              VARCHAR(36) NOT NULL,
+  consultation_id VARCHAR(36) NULL,
+  appointment_id  VARCHAR(36) NULL,
+  payer_id        VARCHAR(36) NOT NULL,
+  payee_id        VARCHAR(36) NULL,
+  amount          DECIMAL(10,2) NOT NULL,
+  currency        VARCHAR(3) NOT NULL DEFAULT 'USD',
+  purpose         ENUM('CONSULTATION','PRESCRIPTION','FOLLOW_UP') NOT NULL DEFAULT 'CONSULTATION',
+  method          VARCHAR(20) NOT NULL DEFAULT 'CARD',
+  provider        VARCHAR(30) NOT NULL DEFAULT 'DEMO_GATEWAY',
+  provider_ref    VARCHAR(120) NULL,
+  card_last4      VARCHAR(4) NULL,
+  status          ENUM('PENDING','PAID','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING',
+  receipt_no      VARCHAR(30) NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_payment_receipt (receipt_no),
+  KEY ix_payment_payer (payer_id, created_at),
+  KEY ix_payment_consult (consultation_id),
+  CONSTRAINT fk_payment_consult FOREIGN KEY (consultation_id) REFERENCES consultations (id) ON DELETE SET NULL,
+  CONSTRAINT fk_payment_payer   FOREIGN KEY (payer_id)        REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_payment_payee   FOREIGN KEY (payee_id)        REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- Django framework tables (session store + migration bookkeeping)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS django_session (

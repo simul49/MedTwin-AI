@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { useUiStore } from '@/stores/ui';
-import { connect, auth as authApi } from '@/api/endpoints';
+import { connect, consultations, auth as authApi } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import type { Appointment } from '@/api/types';
+
+const router = useRouter();
 
 const { t } = useI18n();
 const ui = useUiStore();
@@ -23,6 +26,26 @@ const counts = computed(() => ({
   completed: appointments.value.filter((a) => a.status === 'COMPLETED').length,
   cancelled: appointments.value.filter((a) => ['CANCELLED', 'DECLINED'].includes(a.status)).length,
 }));
+
+/** Per-appointment "creating consultation" spinner state. */
+const consulting = ref<Record<string, boolean>>({});
+
+/** Create a paid consultation for this appointment, then go straight to checkout. */
+async function startConsultation(appointment: Appointment) {
+  if (!appointment.doctorId) return;
+  consulting.value[appointment.id] = true;
+  try {
+    const consultation = await consultations.create({
+      doctorId: appointment.doctorId,
+      appointmentId: appointment.id,
+    });
+    await router.push(`/patient/consultations?pay=${consultation.id}`);
+  } catch (err) {
+    ui.notify(err instanceof Error ? err.message : String(err), 'error');
+  } finally {
+    consulting.value[appointment.id] = false;
+  }
+}
 
 const UPCOMING = ['REQUESTED', 'CONFIRMED'];
 
@@ -275,6 +298,14 @@ onMounted(load);
             </div>
             <div class="flex shrink-0 items-center gap-2">
               <StatusBadge :status="appointment.status" />
+              <button
+                v-if="['REQUESTED', 'CONFIRMED'].includes(appointment.status)"
+                class="dash-btn px-3 py-1.5 text-[11px]"
+                :disabled="consulting[appointment.id]"
+                @click="startConsultation(appointment)"
+              >
+                {{ consulting[appointment.id] ? 'Creating…' : 'Video consult · pay' }}
+              </button>
               <button
                 v-if="['REQUESTED', 'CONFIRMED'].includes(appointment.status)"
                 class="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"

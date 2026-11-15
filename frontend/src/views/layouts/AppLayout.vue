@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { connect } from '@/api/endpoints';
+import { useRealtime } from '@/composables/useRealtime';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -51,6 +52,7 @@ const items = computed(() => {
       { to: '/patient/recommendations', label: t('patient.navRecommendations'), icon: 'recommendations' },
       { to: '/patient/consent', label: t('patient.navConsent'), icon: 'consent' },
       { to: '/patient/appointments', label: t('patient.navAppointments'), icon: 'appointments' },
+      { to: '/patient/consultations', label: 'Consultations', icon: 'safety' },
       { to: '/patient/messages', label: t('patient.navMessages'), icon: 'messages' },
       { to: '/patient/notifications', label: t('patient.navNotifications'), icon: 'notifications' },
       { to: '/patient/settings', label: t('patient.navSettings'), icon: 'settings' },
@@ -61,6 +63,7 @@ const items = computed(() => {
       { to: '/doctor', label: t('doctor.navOverview'), icon: 'overview' },
       { to: '/doctor/patients', label: t('doctor.navPatients'), icon: 'users' },
       { to: '/doctor/appointments', label: t('doctor.navAppointments'), icon: 'appointments' },
+      { to: '/doctor/consultations', label: 'Consultations', icon: 'safety' },
       { to: '/doctor/messages', label: t('doctor.navMessages'), icon: 'messages' },
       { to: '/doctor/safety', label: t('doctor.safetyEvaluate'), icon: 'safety' },
       { to: '/doctor/settings', label: t('doctor.navSettings'), icon: 'settings' },
@@ -99,6 +102,22 @@ async function loadNotifications() {
     notifications.value = { unread: 0, results: [] };
   }
 }
+
+// Real-time: push notifications arrive over the WebSocket as they happen.
+const realtime = useRealtime();
+let unsubscribe: (() => void) | null = null;
+
+onMounted(() => {
+  loadNotifications();
+  if (auth.user) {
+    realtime.connect();
+    unsubscribe = realtime.on('notification', () => loadNotifications());
+  }
+});
+
+onUnmounted(() => {
+  unsubscribe?.();
+});
 
 async function signOut() {
   await auth.logout();

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { connect } from '@/api/endpoints';
 import { formatDateTime } from '@/composables/useAsync';
+import { useRealtime } from '@/composables/useRealtime';
 import type { ChatMessage, Conversation } from '@/api/types';
 
 const { t } = useI18n();
@@ -17,6 +18,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 let timer: number | undefined;
+let unsubscribe: (() => void) | null = null;
 
 const DAY_FMT = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -79,13 +81,29 @@ async function send() {
 onMounted(async () => {
   await loadConversations();
   if (conversations.value.length) await select(conversations.value[0]);
+  // Real-time messages arrive over the WebSocket; the poller stays as a fallback.
+  const realtime = useRealtime();
+  realtime.connect();
+  unsubscribe = realtime.on('message', (payload) => {
+    const conversationId = String(payload.conversationId ?? '');
+    const message = payload.message as ChatMessage | undefined;
+    if (!message) return;
+    if (active.value && conversationId === active.value.id) {
+      if (!messages.value.some((m) => m.id === message.id)) {
+        messages.value.push(message);
+        void scroll();
+      }
+    }
+    void loadConversations();
+  });
   timer = window.setInterval(async () => {
     if (active.value) messages.value = (await connect.messages(active.value.id)).messages;
-  }, 10000);
+  }, 30000);
 });
 
 onUnmounted(() => {
   if (timer) window.clearInterval(timer);
+  unsubscribe?.();
 });
 </script>
 
