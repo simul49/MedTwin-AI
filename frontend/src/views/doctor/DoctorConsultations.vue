@@ -17,6 +17,7 @@ const STATUS_TONE: Record<string, string> = {
   LIVE: 'bg-brand-600 text-white',
   COMPLETED: 'bg-surface-100 text-ink-600',
   CANCELLED: 'bg-rose-50 text-rose-600',
+  EXPIRED: 'bg-ink-100 text-ink-500',
 };
 
 const actionable = computed(() =>

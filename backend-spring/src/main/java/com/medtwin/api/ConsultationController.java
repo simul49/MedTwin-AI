@@ -5,12 +5,36 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /** Paid video consultations: booking, room access and the prescription note. */
 @RestController
 public class ConsultationController {
     private static final double DEFAULT_FEE = 10.00;
+
+    /**
+     * How long a paid consultation's room stays enterable (minutes). After the
+     * window the consultation is marked EXPIRED and the room option turns off
+     * automatically, on both the patient and clinician side.
+     */
+    private static final int ROOM_VALIDITY_MINUTES = readValidityMinutes();
+
+    private static int readValidityMinutes() {
+        try {
+            return Math.max(5, Integer.parseInt(System.getenv().getOrDefault("MEDTWIN_ROOM_VALIDITY_MINUTES", "120")));
+        } catch (NumberFormatException ignored) {
+            return 120;
+        }
+    }
+
+    /** Mark paid/waiting consultations past their validity window as EXPIRED. */
+    private void expireStale() {
+        db.exec("UPDATE consultations SET status = 'EXPIRED' "
+                + "WHERE status IN ('PAID', 'WAITING_ROOM') "
+                + "AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)", ROOM_VALIDITY_MINUTES);
+    }
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Db db;
@@ -66,6 +90,7 @@ public class ConsultationController {
     /** Role-scoped list: patient and doctor see their own, admin sees all. */
     @GetMapping("/consultations/")
     public Map<String, Object> list() {
+        expireStale();
         Principal user = Ctx.user();
         List<Map<String, Object>> rows;
         if (user.role.equals("PATIENT")) {
@@ -120,8 +145,18 @@ public class ConsultationController {
     public Map<String, Object> join(@PathVariable String id) {
         Map<String, Object> row = visible(id);
         String status = J.s(row.get("status"));
+        if (status.equals("EXPIRED")) {
+            throw ApiError.bad("This consultation room has expired. Book a new consultation to talk to your clinician.");
+        }
         if (!status.equals("PAID") && !status.equals("WAITING_ROOM") && !status.equals("LIVE")) {
             throw ApiError.bad("Complete the payment before entering the consultation room.");
+        }
+        // Room validity window: reject late joins even before the sweep runs.
+        Object createdAt = row.get("created_at");
+        if (!status.equals("LIVE") && createdAt instanceof Timestamp ts
+                && ts.before(Timestamp.valueOf(LocalDateTime.now().minusMinutes(ROOM_VALIDITY_MINUTES)))) {
+            db.exec("UPDATE consultations SET status = 'EXPIRED' WHERE id = ? AND status IN ('PAID', 'WAITING_ROOM')", id);
+            throw ApiError.bad("This consultation room has expired. Book a new consultation to talk to your clinician.");
         }
         String roomCode = J.s(row.get("room_code"));
         if (roomCode == null || roomCode.isBlank()) {

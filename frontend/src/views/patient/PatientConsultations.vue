@@ -18,7 +18,7 @@ const processing = ref(false);
 const payError = ref<string | null>(null);
 const receipt = ref<{ receiptNo: string | null; amount: number; currency: string; cardLast4: string | null } | null>(null);
 
-const paid = computed(() => items.value.filter((c) => ['PAID', 'WAITING_ROOM', 'LIVE', 'COMPLETED'].includes(c.status)));
+const paid = computed(() => items.value.filter((c) => ['PAID', 'WAITING_ROOM', 'LIVE', 'COMPLETED', 'EXPIRED'].includes(c.status)));
 const awaitingPayment = computed(() => items.value.filter((c) => ['SCHEDULED', 'PAYMENT_PENDING'].includes(c.status)));
 
 const STATUS_TONE: Record<string, string> = {
@@ -29,6 +29,7 @@ const STATUS_TONE: Record<string, string> = {
   LIVE: 'bg-brand-600 text-white',
   COMPLETED: 'bg-surface-100 text-ink-600',
   CANCELLED: 'bg-rose-50 text-rose-600',
+  EXPIRED: 'bg-ink-100 text-ink-500',
 };
 
 function openCheckout(item: Consultation) {
