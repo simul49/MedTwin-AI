@@ -161,6 +161,7 @@ export const consultations = {
   create: (payload: { doctorId: string; appointmentId?: string; feeAmount?: number }) =>
     api.post<Consultation>('/consultations/', payload),
   detail: (id: string) => api.get<Consultation>(`/consultations/${id}/`),
+  ice: () => api.get<{ iceServers: RTCIceServer[]; turnEnabled: boolean }>('/consultations/ice/'),
   join: (id: string) => api.post<Consultation & { room: string }>(`/consultations/${id}/join/`, {}),
   prescribe: (id: string, prescriptionNote: string) =>
     api.post<Consultation>(`/consultations/${id}/prescribe/`, { prescriptionNote }),

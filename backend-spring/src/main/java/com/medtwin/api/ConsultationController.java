@@ -87,6 +87,34 @@ public class ConsultationController {
         return view(visible(id));
     }
 
+    /**
+     * ICE server configuration for the WebRTC room, served to authenticated users.
+     *
+     * Defaults to public Google STUN (same-network calls). For calls across the
+     * internet a TURN server is required — configure it via environment
+     * variables (MEDTWIN_TURN_URL / MEDTWIN_TURN_USERNAME /
+     * MEDTWIN_TURN_CREDENTIAL) or run docker-compose.coturn.yml and point the
+     * env at it. Credentials are injected server-side so they never sit in the
+     * frontend bundle.
+     */
+    @GetMapping("/consultations/ice/")
+    public Map<String, Object> iceConfig() {
+        List<Map<String, Object>> servers = new ArrayList<>();
+        String stun = System.getenv().getOrDefault("MEDTWIN_STUN_URLS",
+                "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302");
+        for (String url : stun.split(",")) {
+            if (!url.isBlank()) servers.add(J.map("urls", url.trim()));
+        }
+        String turnUrl = System.getenv("MEDTWIN_TURN_URL");
+        if (turnUrl != null && !turnUrl.isBlank()) {
+            servers.add(J.map(
+                    "urls", turnUrl,
+                    "username", System.getenv().getOrDefault("MEDTWIN_TURN_USERNAME", ""),
+                    "credential", System.getenv().getOrDefault("MEDTWIN_TURN_CREDENTIAL", "")));
+        }
+        return J.map("iceServers", servers, "turnEnabled", turnUrl != null && !turnUrl.isBlank());
+    }
+
     /** Enter the video room. Requires the consultation to be paid (RBAC: participants only). */
     @PostMapping("/consultations/{id}/join/")
     public Map<String, Object> join(@PathVariable String id) {

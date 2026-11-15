@@ -1,0 +1,30 @@
+# Self-hosted TURN server for MedTwin video consultations.
+#
+# A TURN server lets WebRTC calls connect across the internet (different
+# networks, mobile carriers, strict firewalls) — without it, calls only work
+# when both peers are on the same network. Run once on a public host:
+#
+#   docker compose -f docker-compose.coturn.yml up -d
+#
+# Then point the Spring Boot backend at it:
+#   export MEDTWIN_TURN_URL=turn:YOUR_SERVER_IP:3478?transport=udp
+#   export MEDTWIN_TURN_USERNAME=medtwin
+#   export MEDTWIN_TURN_CREDENTIAL=change-this-password
+#
+# The backend serves these to browsers via GET /consultations/ice/, so the
+# credentials never live in the frontend bundle.
+services:
+  coturn:
+    image: coturn/coturn:latest
+    network_mode: host
+    restart: unless-stopped
+    command: >
+      -n
+      --realm=medtwin.ai
+      --user=medtwin:change-this-password
+      --lt-cred-mech
+      --fingerprint
+      --no-multicast-peers
+      --no-cli
+    # 3478 = STUN/TURN (UDP+TCP), 5349 = TURNS (TLS, mount certs to enable),
+    # 49152-65535 = relay port range.

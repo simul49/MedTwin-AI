@@ -15,95 +15,224 @@ const consultation = ref<Consultation | null>(null);
 const room = ref('');
 const status = ref<string>('');
 const live = ref(false);
+const reconnecting = ref(false);
 const micOn = ref(true);
 const camOn = ref(true);
+const sharing = ref(false);
 const error = ref<string | null>(null);
 const localVideo = ref<HTMLVideoElement | null>(null);
 const remoteVideo = ref<HTMLVideoElement | null>(null);
 const prescription = ref('');
 const saving = ref(false);
+const elapsed = ref(0);
+const quality = ref<'good' | 'fair' | 'poor'>('good');
+const turnEnabled = ref(false);
+const peerOnline = ref(false);
 
 const isDoctor = computed(() => auth.isDoctor);
 const counterpartId = computed(() => {
   if (!consultation.value) return '';
   return isDoctor.value ? consultation.value.patient?.id ?? '' : consultation.value.doctor?.id ?? '';
 });
+const qualityTone = computed(() =>
+  quality.value === 'good' ? 'bg-brand-500' : quality.value === 'fair' ? 'bg-amber-400' : 'bg-rose-500',
+);
+// Perfect negotiation: the "polite" peer rolls back on offer collisions.
+const polite = computed(() => (auth.user?.id ?? '') > counterpartId.value);
 
 // --- WebRTC state ------------------------------------------------------------
 let pc: RTCPeerConnection | null = null;
 let localStream: MediaStream | null = null;
+let cameraTrack: MediaStreamTrack | null = null;
+let screenStream: MediaStream | null = null;
+let iceServers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+let makingOffer = false;
+let ignoreOffer = false;
+let iceRestartAttempts = 0;
+let timerInterval: number | undefined;
+let statsInterval: number | undefined;
+let statsFailures = 0;
 let offRoom: (() => void) | null = null;
 let offSignal: (() => void) | null = null;
 let offRoomUsers: (() => void) | null = null;
 let offPeerLeft: (() => void) | null = null;
+const MAX_ICE_RESTARTS = 4;
 
-function pcConfig(): RTCConfiguration {
-  return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+async function loadIceConfig() {
+  try {
+    const config = await consultations.ice();
+    if (config.iceServers?.length) iceServers = config.iceServers;
+    turnEnabled.value = config.turnEnabled;
+  } catch {
+    // fall back to public STUN
+  }
 }
 
 async function ensureLocalStream() {
   if (localStream) return localStream;
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: { echoCancellation: true, noiseSuppression: true },
+  });
+  cameraTrack = localStream.getVideoTracks()[0] ?? null;
   if (localVideo.value) localVideo.value.srcObject = localStream;
   return localStream;
 }
 
 function createPeer(): RTCPeerConnection {
-  const peer = new RTCPeerConnection(pcConfig());
+  const peer = new RTCPeerConnection({ iceServers });
   localStream?.getTracks().forEach((track) => peer.addTrack(track, localStream!));
+
+  // Renegotiate whenever tracks/transceivers change (perfect negotiation).
+  peer.onnegotiationneeded = async () => {
+    try {
+      makingOffer = true;
+      await peer.setLocalDescription();
+      if (counterpartId.value) {
+        realtime.signal(room.value, counterpartId.value, {
+          sdp: { type: peer.localDescription?.type, sdp: peer.localDescription?.sdp },
+        });
+      }
+    } catch {
+      // retried on the next transceiver change
+    } finally {
+      makingOffer = false;
+    }
+  };
+
   peer.onicecandidate = (event) => {
     if (event.candidate && counterpartId.value) {
       realtime.signal(room.value, counterpartId.value, { candidate: event.candidate.toJSON() });
     }
   };
+
   peer.ontrack = (event) => {
     if (remoteVideo.value) remoteVideo.value.srcObject = event.streams[0];
-    live.value = true;
+  };
+
+  peer.oniceconnectionstatechange = () => handleIceState(peer);
+  peer.onconnectionstatechange = () => {
+    if (peer.connectionState === 'connected' && !live.value) markLive();
   };
   return peer;
 }
 
-/** Deterministic initiator: the lexicographically smaller userId sends the offer. */
-function shouldInitiate(otherId: string): boolean {
-  return (auth.user?.id ?? '') < otherId;
+function handleIceState(peer: RTCPeerConnection) {
+  const state = peer.iceConnectionState;
+  if (state === 'connected' || state === 'completed') {
+    live.value = true;
+    reconnecting.value = false;
+    iceRestartAttempts = 0;
+  } else if (state === 'disconnected') {
+    reconnecting.value = true;
+    // minor hiccups heal themselves; restart only if it persists
+    window.setTimeout(() => {
+      if (pc?.iceConnectionState === 'disconnected') void restartIce();
+    }, 4000);
+  } else if (state === 'failed') {
+    void restartIce();
+  } else if (state === 'closed') {
+    live.value = false;
+  }
 }
 
-async function startCall(otherId: string) {
+function markLive() {
+  live.value = true;
+  reconnecting.value = false;
+  if (!timerInterval) {
+    timerInterval = window.setInterval(() => (elapsed.value += 1), 1000);
+    statsInterval = window.setInterval(pollQuality, 5000);
+  }
+}
+
+async function restartIce() {
+  if (!pc || iceRestartAttempts >= MAX_ICE_RESTARTS) return;
+  iceRestartAttempts += 1;
+  reconnecting.value = true;
   try {
-    await ensureLocalStream();
-    pc?.close();
-    pc = createPeer();
-    const offer = await pc.createOffer();
+    const offer = await pc.createOffer({ iceRestart: true });
     await pc.setLocalDescription(offer);
-    realtime.signal(room.value, otherId, { sdp: { type: offer.type, sdp: offer.sdp } });
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Camera or microphone unavailable.';
+    if (counterpartId.value) {
+      realtime.signal(room.value, counterpartId.value, {
+        sdp: { type: pc.localDescription?.type, sdp: pc.localDescription?.sdp },
+      });
+    }
+  } catch {
+    // a peer-left event will clean up if the other side is really gone
+  }
+}
+
+/** Watch the RTT to grade the call quality for the user. */
+async function pollQuality() {
+  if (!pc || !live.value) return;
+  try {
+    const stats = await pc.getStats();
+    let rtt: number | null = null;
+    stats.forEach((report) => {
+      const pair = report as { type?: string; state?: string; currentRoundTripTime?: number };
+      if (pair.type === 'candidate-pair' && pair.state === 'succeeded' && pair.currentRoundTripTime != null) {
+        rtt = pair.currentRoundTripTime;
+      }
+    });
+    statsFailures = 0;
+    if (rtt != null) quality.value = rtt < 0.15 ? 'good' : rtt < 0.35 ? 'fair' : 'poor';
+  } catch {
+    statsFailures += 1;
+    if (statsFailures > 3) quality.value = 'poor';
   }
 }
 
 async function handleSignal(payload: Record<string, unknown>) {
   const from = String(payload.from ?? '');
-  const data = payload.data as { sdp?: { type: string; sdp: string }; candidate?: RTCIceCandidateInit } | undefined;
+  const data = payload.data as
+    | { sdp?: { type: string; sdp: string }; candidate?: RTCIceCandidateInit }
+    | undefined;
   if (!data) return;
   try {
     await ensureLocalStream();
-    pc?.close();
-    pc = pc && pc.connectionState !== 'closed' ? pc : createPeer();
-    if (data.sdp?.type === 'offer') {
+    if (!pc) pc = createPeer();
+
+    if (data.sdp) {
+      const offerCollision =
+        data.sdp.type === 'offer' && (makingOffer || pc.signalingState !== 'stable');
+      ignoreOffer = !polite.value && offerCollision;
+      if (ignoreOffer) return;
+
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp as RTCSessionDescriptionInit));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      realtime.signal(room.value, from, { sdp: { type: answer.type, sdp: answer.sdp } });
-    } else if (data.sdp?.type === 'answer') {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp as RTCSessionDescriptionInit));
+
+      if (data.sdp.type === 'offer') {
+        await pc.setLocalDescription();
+        realtime.signal(room.value, from, {
+          sdp: { type: pc.localDescription?.type, sdp: pc.localDescription?.sdp },
+        });
+      }
     } else if (data.candidate) {
-      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      } catch (err) {
+        if (!ignoreOffer) throw err;
+      }
     }
   } catch {
-    // transient signalling race — ICE retries recover
+    // transient signalling race — perfect negotiation recovers on the next event
   }
 }
 
+/** Called when the room roster shows the counterpart present. */
+async function onRoomUsers(users: string[]) {
+  const other = users.find((u) => u !== auth.user?.id);
+  peerOnline.value = Boolean(other);
+  if (other && !pc) {
+    try {
+      await ensureLocalStream();
+      pc = createPeer(); // onnegotiationneeded sends the offer
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Camera or microphone unavailable.';
+    }
+  }
+}
+
+// --- media controls -----------------------------------------------------------
 async function toggleMic() {
   micOn.value = !micOn.value;
   localStream?.getAudioTracks().forEach((t) => (t.enabled = micOn.value));
@@ -112,6 +241,47 @@ async function toggleMic() {
 async function toggleCam() {
   camOn.value = !camOn.value;
   localStream?.getVideoTracks().forEach((t) => (t.enabled = camOn.value));
+}
+
+/** Replace the outgoing camera track with the screen; restores on stop. */
+async function toggleShare() {
+  try {
+    if (sharing.value) {
+      screenStream?.getTracks().forEach((t) => t.stop());
+      screenStream = null;
+      sharing.value = false;
+      if (cameraTrack && pc) {
+        const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+        await sender?.replaceTrack(cameraTrack);
+        cameraTrack.enabled = true;
+        if (localVideo.value) localVideo.value.srcObject = localStream;
+      }
+      return;
+    }
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const screenTrack = screenStream.getVideoTracks()[0];
+    if (pc) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+      await sender?.replaceTrack(screenTrack);
+    }
+    if (cameraTrack) cameraTrack.enabled = false;
+    sharing.value = true;
+    if (localVideo.value && screenStream) localVideo.value.srcObject = screenStream;
+    screenTrack.onended = () => {
+      if (sharing.value) void toggleShare();
+    };
+  } catch {
+    // user dismissed the picker — keep the camera view
+  }
+}
+
+function formatElapsed(total: number): string {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 async function endCall() {
@@ -134,8 +304,15 @@ async function sendPrescription() {
 function cleanup() {
   pc?.close();
   pc = null;
+  screenStream?.getTracks().forEach((t) => t.stop());
+  screenStream = null;
   localStream?.getTracks().forEach((t) => t.stop());
   localStream = null;
+  cameraTrack = null;
+  if (timerInterval) window.clearInterval(timerInterval);
+  if (statsInterval) window.clearInterval(statsInterval);
+  timerInterval = undefined;
+  statsInterval = undefined;
   offRoomUsers?.();
   offSignal?.();
   offPeerLeft?.();
@@ -146,6 +323,7 @@ function cleanup() {
 onMounted(async () => {
   error.value = null;
   try {
+    await loadIceConfig();
     consultation.value = await consultations.join(props.id);
     room.value = String((consultation.value as { room?: string }).room ?? '');
     status.value = consultation.value.status;
@@ -159,16 +337,19 @@ onMounted(async () => {
       }
     });
     offRoomUsers = realtime.on('room-users', (payload) => {
-      const users = (payload.users as string[]) ?? [];
-      const other = users.find((u) => u !== auth.user?.id);
-      if (other && shouldInitiate(other)) void startCall(other);
+      void onRoomUsers((payload.users as string[]) ?? []);
     });
     offSignal = realtime.on('signal', handleSignal);
-    offPeerLeft = realtime.on('peer-left', () => {
-      live.value = false;
-      if (remoteVideo.value) remoteVideo.value.srcObject = null;
-      pc?.close();
-      pc = null;
+    offPeerLeft = realtime.on('peer-left', (payload) => {
+      const userId = String(payload.userId ?? '');
+      if (userId && userId !== auth.user?.id) {
+        live.value = false;
+        reconnecting.value = false;
+        peerOnline.value = false;
+        if (remoteVideo.value) remoteVideo.value.srcObject = null;
+        pc?.close();
+        pc = null;
+      }
     });
 
     realtime.connect();
@@ -192,12 +373,13 @@ onUnmounted(cleanup);
         <p class="mt-0.5 text-[12px] text-ink-400">
           Room {{ consultation?.roomCode || '—' }} ·
           <span :class="status === 'LIVE' ? 'font-semibold text-brand-700' : 'text-ink-400'">{{ status }}</span>
+          <span v-if="live"> · {{ formatElapsed(elapsed) }}</span>
         </p>
       </div>
       <div class="flex items-center gap-2">
         <span class="chip bg-brand-50 font-semibold text-brand-700">
-          <span class="h-1.5 w-1.5 rounded-full" :class="live ? 'bg-brand-500' : 'bg-ink-300'" />
-          {{ live ? 'Connected' : 'Waiting for the other participant' }}
+          <span class="h-1.5 w-1.5 rounded-full" :class="live ? qualityTone : 'bg-ink-300'" />
+          {{ live ? `Connected · ${quality} quality` : reconnecting ? 'Reconnecting…' : peerOnline ? 'Peer in room' : 'Waiting for the other participant' }}
         </span>
         <button class="btn-danger px-3 py-1.5 text-xs" @click="endCall">Leave room</button>
       </div>
@@ -218,18 +400,28 @@ onUnmounted(cleanup);
               <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21a8 8 0 0116 0" stroke-linecap="round" />
             </svg>
           </span>
-          <p class="text-[14px] font-semibold text-white/80">Waiting room</p>
+          <p class="text-[14px] font-semibold text-white/80">{{ reconnecting ? 'Reconnecting…' : 'Waiting room' }}</p>
           <p class="max-w-xs text-[12px] text-white/50">
-            The video call starts automatically when both participants are in the room.
+            {{ reconnecting
+              ? 'The connection dropped — restoring the video call automatically.'
+              : 'The video call starts automatically when both participants are in the room.' }}
           </p>
         </div>
+        <span
+          v-if="live"
+          class="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold tabular-nums text-white"
+        >{{ formatElapsed(elapsed) }}</span>
+        <span
+          v-if="sharing"
+          class="absolute right-3 top-3 rounded-full bg-brand-600 px-2.5 py-1 text-[11px] font-bold text-white"
+        >Sharing screen</span>
         <!-- local preview -->
         <video
           ref="localVideo"
           autoplay
           playsinline
           muted
-          class="absolute bottom-3 right-3 h-28 w-44 rounded-xl border border-white/20 object-cover shadow-lg"
+          class="absolute bottom-14 right-3 h-28 w-44 rounded-xl border border-white/20 object-cover shadow-lg"
         />
         <!-- controls -->
         <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
@@ -254,6 +446,23 @@ onUnmounted(cleanup);
               <path v-if="camOn" d="M3 7h11v10H3zM14 10l6-3v10l-6-3" stroke-linecap="round" stroke-linejoin="round" />
               <path v-else d="M3 7h11v10H3zM14 10l6-3v10l-6-3M3 3l18 18" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
+          </button>
+          <button
+            class="flex h-10 w-10 items-center justify-center rounded-full text-white shadow-lg transition-colors"
+            :class="sharing ? 'bg-brand-600' : 'bg-white/20 hover:bg-white/30'"
+            title="Share your screen"
+            @click="toggleShare"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M3 5h18v11H3zM8 21h8M12 16v5M12 12V8m0 0l-2.5 2.5M12 8l2.5 2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <button
+            class="flex h-10 items-center justify-center gap-1.5 rounded-full bg-rose-600 px-4 text-[12px] font-bold text-white shadow-lg transition-colors hover:bg-rose-500"
+            title="End the call"
+            @click="endCall"
+          >
+            End
           </button>
         </div>
       </div>
@@ -304,7 +513,9 @@ onUnmounted(cleanup);
         </div>
 
         <div class="dash-info">
-          This call is peer-to-peer in your browser. Nothing is recorded by the platform.
+          Encrypted peer-to-peer call
+          <span v-if="turnEnabled">· relayed via your TURN server when needed</span>
+          · nothing is recorded by the platform.
         </div>
       </div>
     </div>
