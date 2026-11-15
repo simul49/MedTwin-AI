@@ -378,6 +378,11 @@ public class PatientController {
         }
         String text = J.s(extracted.get("text"));
         String error = J.s(extracted.get("error"));
+        String method = J.s(extracted.get("method"));
+        boolean viaOcr = "ocr".equals(method) && error.isEmpty();
+        String note = viaOcr
+                ? "Extracted via OCR from a scanned document — review the values carefully."
+                : null;
         int pageCount = J.gi(extracted, "pageCount", 0);
         String id = J.uuid();
         db.exec("INSERT INTO documents (id, owner_id, patient_id, name, mime_type, size_bytes, "
@@ -389,7 +394,7 @@ public class PatientController {
                 (category == null || category.isBlank() ? "OTHER" : category.toUpperCase())
                         .substring(0, Math.min(40, (category == null || category.isBlank()
                                 ? "OTHER" : category.toUpperCase()).length())),
-                error.isEmpty() ? "PROCESSED" : "FAILED", blankToNull(error),
+                error.isEmpty() ? "PROCESSED" : "FAILED", viaOcr ? note : blankToNull(error),
                 text.isEmpty() ? null : text, pageCount == 0 ? null : pageCount,
                 patientId, J.ts(), J.ts());
 
@@ -407,13 +412,14 @@ public class PatientController {
                         J.s(field.get("evidence")), J.ts());
             }
         }
+        String timelineText = error.isEmpty()
+                ? text.length() + " characters extracted." + (viaOcr ? " OCR — review values carefully." : "")
+                : error;
         db.exec("INSERT INTO timeline_events (id, patient_id, event_type, title, description, "
                         + "occurred_at, source_type, source_id, created_at) "
                         + "VALUES (?, ?, 'DOCUMENT_UPLOADED', ?, ?, ?, 'EXTRACTED', ?, ?)",
                 J.uuid(), patientId, truncate("Uploaded " + name, 200),
-                (error.isEmpty() ? text.length() + " characters extracted." : error)
-                        .substring(0, Math.min(500, (error.isEmpty()
-                                ? text.length() + " characters extracted." : error).length())),
+                timelineText.substring(0, Math.min(500, timelineText.length())),
                 J.ts(), id, J.ts());
         audit.log("DOCUMENT_UPLOAD", "document", id, "SUCCESS",
                 J.map("size", file.getSize(), "status", error.isEmpty() ? "PROCESSED" : "FAILED"));

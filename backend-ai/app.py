@@ -418,11 +418,18 @@ def internal_extract(request: Request, payload: Dict[str, Any] = Body(default={}
         raise HTTPException(status_code=400, detail="Document not found.")
 
     mime = str(payload.get("mimeType") or "")
-    text, page_count, error = extraction.extract_text(path, mime)
+    text, page_count, error, method = extraction.extract_text_full(path, mime)
+    fields = extraction.derive_fields(text)
+    if method == "ocr":
+        # OCR text is less reliable than a native text layer — flag every
+        # candidate with reduced confidence so review stays mandatory.
+        for field in fields:
+            field["confidence"] = round(field["confidence"] * 0.7, 2)
     return {
         "text": text,
         "pageCount": page_count,
         "error": error,
-        "fields": extraction.derive_fields(text),
+        "method": method,
+        "fields": fields,
         "sha256": extraction.sha256_of(path),
     }

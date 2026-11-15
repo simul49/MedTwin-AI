@@ -26,9 +26,88 @@ FIELD_PATTERNS = [
 ]
 
 NOTE_NO_OCR = (
-    "Image uploaded successfully. No OCR engine is configured, so no text was "
-    "extracted — review the file manually or upload a PDF with a text layer."
+    "Image uploaded successfully, but OCR is unavailable on the server — no text "
+    "could be extracted. Upload a PDF with a text layer instead."
 )
+
+OCR_MAX_PAGES = 8
+
+
+def _ocr_pdf(path: Path, max_pages: int = OCR_MAX_PAGES) -> Tuple[str, int]:
+    """Render scanned PDF pages to images and OCR them."""
+    import io
+
+    import fitz  # PyMuPDF
+    import pytesseract
+    from PIL import Image
+
+    doc = fitz.open(str(path))
+    page_count = len(doc)
+    pages = []
+    for index in range(min(page_count, max_pages)):
+        pix = doc[index].get_pixmap(dpi=200)
+        image = Image.open(io.BytesIO(pix.tobytes("png")))
+        pages.append(pytesseract.image_to_string(image) or "")
+    doc.close()
+    return "\n".join(pages).strip(), page_count
+
+
+def _ocr_image(path: Path) -> str:
+    import pytesseract
+    from PIL import Image
+
+    return pytesseract.image_to_string(Image.open(str(path))).strip()
+
+
+def _ocr_available() -> bool:
+    try:
+        import pytesseract  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def extract_text_full(path: Path, mime_type: str) -> Tuple[str, int, str, str]:
+    """Return ``(text, page_count, error, method)`` with method in
+    ``text-layer`` | ``ocr`` | ``none``."""
+    try:
+        if mime_type == "application/pdf":
+            from pypdf import PdfReader
+
+            reader = PdfReader(str(path))
+            pages = []
+            for page in reader.pages[:40]:
+                pages.append(page.extract_text() or "")
+            text = "\n".join(pages).strip()
+            if text:
+                return text, len(reader.pages), "", "text-layer"
+            # No text layer — likely a scan: fall back to OCR.
+            if _ocr_available():
+                text, _ = _ocr_pdf(path)
+                if text:
+                    return text, len(reader.pages), "", "ocr"
+                return "", len(reader.pages), "No readable text found even via OCR — the scan may be blank or very low quality.", "none"
+            return "", len(reader.pages), "No text layer found in this PDF (likely a scan).", "none"
+
+        if mime_type in {"image/png", "image/jpeg"}:
+            if _ocr_available():
+                text = _ocr_image(path)
+                if text:
+                    return text, 1, "", "ocr"
+                return "", 1, "No readable text found in this image via OCR.", "none"
+            return "", 1, NOTE_NO_OCR, "none"
+
+        return "", 0, f"Unsupported type for extraction: {mime_type}", "none"
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("extraction failed for %s: %s", path, exc)
+        return "", 0, f"Extraction failed: {exc}", "none"
+
+
+def extract_text(path: Path, mime_type: str) -> Tuple[str, int, str]:
+    """Backwards-compatible wrapper returning ``(text, page_count, error)``."""
+    text, page_count, error, _method = extract_text_full(path, mime_type)
+    return text, page_count, error
 
 
 def sha256_of(path: Path) -> str:

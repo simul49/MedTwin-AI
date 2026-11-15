@@ -213,6 +213,13 @@ onMounted(load);
           </div>
           <div class="mt-3 max-h-[280px] overflow-y-auto rounded-xl bg-surface-50 p-3 font-mono text-[11px] leading-relaxed text-ink-600">
             <template v-if="selected?.extractions?.length">
+              <p
+                v-if="selected.processingError"
+                class="mb-2 font-sans text-[11px] font-semibold"
+                :class="selected.processingStatus === 'PROCESSED' ? 'text-brand-700' : 'text-amber-700'"
+              >
+                {{ selected.processingStatus === 'PROCESSED' ? 'Note:' : 'Reason:' }} {{ selected.processingError }}
+              </p>
               <p v-for="item in selected.extractions" :key="item.id" class="mb-1.5">
                 <span class="font-semibold text-ink-800">{{ item.label || item.fieldName }}:</span> {{ item.value }}
                 <span v-if="item.evidence" class="block text-[10px] text-ink-400">“…{{ item.evidence }}…”</span>
@@ -225,14 +232,15 @@ onMounted(load);
               Status: {{ statusText(selected.processingStatus) }}
               <template v-if="selected.processingError">
                 <br />
-                Reason: {{ selected.processingError }}
+                {{ selected.processingStatus === 'PROCESSED' ? 'Note:' : 'Reason:' }}
+                {{ selected.processingError }}
               </template>
               <span
                 v-if="selected.processingStatus === 'FAILED' && (selected.processingError || '').includes('No text layer')"
                 class="mt-2 block rounded-lg border border-amber-200 bg-amber-50 p-2 font-sans text-[11px] leading-snug text-amber-800"
               >
-                This document is a scan (images only), so there is no machine-readable text to extract. Upload the
-                original digital PDF or an export with selectable text — the platform does not run OCR on scanned images.
+                This document is a scan (images only) and OCR is unavailable on the server right now. Upload the
+                original digital PDF or an export with selectable text instead.
               </span>
             </p>
             <p v-else>Select a file to preview its extracted text.</p>
