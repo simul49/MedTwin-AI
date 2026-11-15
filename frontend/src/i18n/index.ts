@@ -2,6 +2,8 @@ import { createI18n } from 'vue-i18n';
 import en from './en';
 import zh from './zh';
 
+const STORAGE_KEY = 'medtwin.locale';
+
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'EN' },
 ] as const;
