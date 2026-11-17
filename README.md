@@ -8,6 +8,11 @@ with a grounded, safety-aware **AI assistant** — with healthcare professionals
 > MedTwin AI provides information and organisational support. It is **not** a diagnosis, **not** a
 > substitute for professional medical advice, and **not** for emergencies.
 
+<p align="center">
+  <img src="docs/screenshot-home.png" alt="MedTwin AI public homepage — hero section with the Digital Twin overview and the 'Built with explicit limits' panel" width="900">
+</p>
+<p align="center"><sub>Live at <a href="https://www.medtwinai.site">www.medtwinai.site</a> — the public site, the patient / clinician / admin portals and the bilingual (EN / 中文) interface all ship from this repository.</sub></p>
+
 ---
 
 ## Stack
