@@ -9,8 +9,8 @@ export default defineConfig({
     // Keep build output in frontend/dist (used by nginx in Docker).
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
     emptyOutDir: true,
-    // The dev entry is dev.html at the repo root; CI renames the built output
-    // to index.html and publishes it at the repo root for GitHub Pages.
+    // The dev entry is dev.html; CI renames the built output to index.html
+    // and publishes it at the repo root for GitHub Pages.
     rollupOptions: {
       input: 'dev.html',
     },
