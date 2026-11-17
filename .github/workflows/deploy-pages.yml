@@ -1,3 +1,4 @@
+
 name: Build and publish frontend to GitHub Pages
 
 on:
@@ -14,9 +15,10 @@ concurrency:
 
 jobs:
   build:
-    # Don't re-run on our own auto-commits (avoids an infinite loop)
+    # Don't re-run on our own auto-commits
     if: github.event.head_commit.author.username != 'github-actions[bot]'
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,8 +34,6 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      # Vite root is the repo root (index.html lives there), so dependencies
-      # must be resolvable from the root — same as docker/Dockerfile.frontend.
       - name: Link node_modules to repo root
         run: ln -s frontend/node_modules node_modules
 
@@ -47,22 +47,38 @@ jobs:
         run: set -o pipefail && npx vite build 2>&1 | tee /tmp/step-build.log
         working-directory: frontend
 
-      # GitHub Pages publishes the repo root of main. The built app IS the
-      # landing page: dist/index.html (renamed from dev.html) becomes the root
-      # index.html, so www.medtwinai.site serves the same Vue app as localhost,
-      # rich footer included. A root 404.html (copy of the app entry) makes
-      # deep links like /login and /patient work with vue-router history mode.
-      - name: Publish built app at the repo root
+      - name: Verify build output
         run: |
+          echo "Checking frontend/dist..."
+          ls -la frontend/dist/
+          test -f frontend/dist/index.html || test -f frontend/dist/dev.html
+
+      - name: Publish built app at the repo root
+        shell: bash
+        run: |
+          set -e
+
           rm -rf site
           rm -f index.html 404.html
+
           cp -R frontend/dist/. .
-          if [ -f dev.html ]; then mv dev.html index.html; fi
+
+          if [ -f dev.html ]; then
+            mv dev.html index.html
+          fi
+
+          test -f index.html
+
           cp index.html 404.html
           touch .nojekyll
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Targeted add — a bare `git add -f -A` would force-add gitignored
+          # paths (node_modules, dist, virtualenvs) into the repository.
           git add -f -A -- assets index.html 404.html .nojekyll site dev.html
+
           if git diff --cached --quiet; then
             echo "No changes to publish"
           else
