@@ -1,18 +1,23 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
+import { resolve } from 'node:path';
+
+// npm scripts and CI run Vite from frontend/, while the HTML entry is at the
+// repository root. Resolve the entry to an absolute path so Rollup does not
+// interpret it relative to the frontend working directory.
+const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
 export default defineConfig({
-  // The Vite entry (index.html) lives at the repo root, outside frontend/.
-  root: fileURLToPath(new URL('..', import.meta.url)),
+  root: repoRoot,
   build: {
     // Keep build output in frontend/dist (used by nginx in Docker).
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
     emptyOutDir: true,
-    // The dev entry is dev.html; CI renames the built output to index.html
-    // and publishes it at the repo root for GitHub Pages.
+    // The dev entry is at the repository root; CI renames its built output
+    // to index.html before publishing it to GitHub Pages.
     rollupOptions: {
-      input: 'dev.html',
+      input: resolve(repoRoot, 'dev.html'),
     },
   },
   plugins: [
@@ -59,7 +64,7 @@ export default defineConfig({
     port: 5173,
     fs: {
       // Allow serving files from the repo root (index.html + frontend/src).
-      allow: [fileURLToPath(new URL('..', import.meta.url))],
+      allow: [repoRoot],
     },
     strictPort: true,
     // Allow cloudflared quick-tunnel hosts (URL changes on each restart).
