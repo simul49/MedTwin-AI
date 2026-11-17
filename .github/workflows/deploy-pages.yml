@@ -79,8 +79,10 @@ jobs:
           # Targeted add — a bare `git add -f -A` would force-add gitignored
           # paths (node_modules, dist, virtualenvs) into the repository.
           # dev.html is deliberately absent: the source entry must stay tracked
-          # and untouched by the publish step.
-          git add -f -A -- assets index.html 404.html .nojekyll site
+          # and untouched by the publish step. `site` no longer exists in the
+          # repo, and listing a nonexistent pathspec makes git add abort, so
+          # only paths that always exist are listed here.
+          git add -f -A -- assets index.html 404.html .nojekyll
 
           if git diff --cached --quiet; then
             echo "No changes to publish"
