@@ -51,21 +51,22 @@ jobs:
         run: |
           echo "Checking frontend/dist..."
           ls -la frontend/dist/
-          test -f frontend/dist/index.html || test -f frontend/dist/dev.html
+          test -f frontend/dist/dev.html
 
+      # The built entry is dist/dev.html; rename it INSIDE dist before copying,
+      # so the root-level source dev.html (Vite's build entry) is never
+      # overwritten or consumed by the publish step.
       - name: Publish built app at the repo root
         shell: bash
         run: |
           set -e
 
+          mv frontend/dist/dev.html frontend/dist/index.html
+
           rm -rf site
           rm -f index.html 404.html
 
           cp -R frontend/dist/. .
-
-          if [ -f dev.html ]; then
-            mv dev.html index.html
-          fi
 
           test -f index.html
 
@@ -77,7 +78,9 @@ jobs:
 
           # Targeted add — a bare `git add -f -A` would force-add gitignored
           # paths (node_modules, dist, virtualenvs) into the repository.
-          git add -f -A -- assets index.html 404.html .nojekyll site dev.html
+          # dev.html is deliberately absent: the source entry must stay tracked
+          # and untouched by the publish step.
+          git add -f -A -- assets index.html 404.html .nojekyll site
 
           if git diff --cached --quiet; then
             echo "No changes to publish"
