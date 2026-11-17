@@ -41,3 +41,9 @@ var/
 Thumbs.db
 .idea/
 .vscode/
+
+# Personal / submission documents — keep local only
+MedTwin_AI_Full_Project_PRD.md
+Weekly Reports/
+*Final Report*.docx
+*Final Report*.pdf
